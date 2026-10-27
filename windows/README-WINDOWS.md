@@ -56,8 +56,15 @@ feeds.
 
 ## Differences from the macOS version (v0.1 scope)
 
-- No on-device AI summary: Windows uses the code-built template summary
-  and the local rules guide only. Nothing is sent to a cloud model.
+- AI summary (optional): the verdict is always decided by the built-in
+  checks. If you run a local model server on this device (for example
+  Ollama), PacketScope can ask it to *word* the Results summary — the
+  wording is validated against the measured numbers before it is shown
+  (every number/name/feed/date must exist in the structured results) and
+  the code-built template is always the fallback. Only loopback endpoints
+  are allowed, so summaries never leave this device; there is no cloud
+  model. Configure it under Ask capture → “Results summary wording”.
+  Ask answers themselves always come from the local rules guide.
 - QUIC server names are not yet extracted (QUIC is reported as “names not
   read, contents encrypted” in coverage); TCP TLS SNI/JA3/JA4 and
   certificate extraction match the Mac behavior, including multi-segment

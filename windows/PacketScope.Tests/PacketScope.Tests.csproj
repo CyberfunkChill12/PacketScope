@@ -12,5 +12,6 @@
     <Compile Include="..\PacketScope.Windows\Results.cs" Link="Results.cs" />
     <Compile Include="..\PacketScope.Windows\ThreatIntel.cs" Link="ThreatIntel.cs" />
     <Compile Include="..\PacketScope.Windows\ThreatIntel.Updater.cs" Link="ThreatIntel.Updater.cs" />
+    <Compile Include="..\PacketScope.Windows\AiSummary.cs" Link="AiSummary.cs" />
   </ItemGroup>
 </Project>

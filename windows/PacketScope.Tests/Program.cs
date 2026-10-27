@@ -176,6 +176,65 @@ ipv4,10.0.0.5,botnet_c2,high
     Directory.Delete(dir, true);
 }
 
+
+// 7. AI summary (Windows): settings guard, validator, and service fallback
+{
+    var settings = new AiSettings { Enabled = true, Endpoint = "https://models.example.com", Model = "x" };
+    Check(settings.ValidationError != null, "non-loopback AI endpoint is rejected");
+    settings.Endpoint = "http://127.0.0.1:11434";
+    Check(settings.ValidationError == null, "loopback AI endpoint is accepted");
+
+    var facts = new CaptureFacts
+    {
+        DnsQueries = 9, DnsAnswered = 9,
+        Destinations = new List<DestinationRecord> { new() { Name = "api.example.com", Address = "203.0.113.10", Port = 443, ProtocolLabel = "TCP · TLS", Outcome = "connected", Packets = 31, Attempts = 1 } },
+    };
+    var aiReport = new CaptureReport { PacketCount = 157, CapturedBytes = 71345, Duration = 3.8, Facts = facts };
+    var aiResults = CaptureResultsBuilder.Build(aiReport, new SessionContext { Goal = CaptureGoal.Website, Interface = "Ethernet0" }, 0);
+    string Input() => SummaryValidator.ModelInputJson(aiResults);
+
+    var good = new AiCandidate { Headline = "All measured connections succeeded in this capture", Body = "9 of 9 name lookups were answered. The connections your device started completed during these 3.8 seconds.", NextStep = "Capture again and mark the moment if it happens again.", Citations = new() { new AiCandidate.AiCitation { Text = "9 of 9 name lookups were answered", Anchor = "#dns" } } };
+    Check(SummaryValidator.Validate(good, aiResults, Input()) != null, "validator accepts a compliant summary");
+    var invented = new AiCandidate { Headline = "There were 999 failures", Body = "All 999 attempts failed during this capture.", NextStep = "Retry.", Citations = new() };
+    Check(SummaryValidator.Validate(invented, aiResults, Input()) == null, "validator rejects invented numbers");
+    var infected = new AiCandidate { Headline = "This device is infected", Body = "The device is infected with malware.", NextStep = "Scan it.", Citations = new() };
+    Check(SummaryValidator.Validate(infected, aiResults, Input()) == null, "validator rejects 'infected' verdict language");
+    var feedsNoMatch = new AiCandidate { Headline = "Nothing was flagged by threat feeds", Body = "No matches in 4 threat feeds were found.", NextStep = "Capture again.", Citations = new() };
+    Check(SummaryValidator.Validate(feedsNoMatch, aiResults, Input()) == null, "validator rejects threat-feed talk when there are no matches");
+
+    // Service behaviour with a fake loopback model.
+    var handler = new FakeModelHandler();
+    var summarizer = new LocalModelSummarizer(new HttpClient(handler));
+    var aiOn = new AiSettings { Enabled = true, Endpoint = "http://127.0.0.1:11434", Model = "llama3.1:8b" };
+    handler.ResponseJson = """{"headline":"All measured connections succeeded in this capture","body":"9 of 9 name lookups were answered. The connections your device started completed.","nextStep":"Capture again and mark the moment if it happens again.","citations":[{"text":"9 of 9 name lookups were answered","anchor":"#dns"}]}""";
+    var used = ResultsSummaryService.SummarizeAsync(aiResults, aiOn, summarizer).GetAwaiter().GetResult();
+    Check(!used.FromTemplate, "valid model wording is used");
+    handler.ResponseJson = """{"headline":"There were 999 failures","body":"All 999 attempts failed.","nextStep":"Retry.","citations":[]}""";
+    var fellBack = ResultsSummaryService.SummarizeAsync(aiResults, aiOn, summarizer).GetAwaiter().GetResult();
+    Check(fellBack.FromTemplate, "invalid model wording falls back to the template");
+    int callsBefore = handler.Calls;
+    var off = ResultsSummaryService.SummarizeAsync(aiResults, new AiSettings { Enabled = false }, summarizer).GetAwaiter().GetResult();
+    Check(off.FromTemplate && handler.Calls == callsBefore, "disabled AI never calls the model");
+    Check(!aiResults.TemplateSummary.Headline.Equals("", StringComparison.Ordinal), "template summary is never empty");
+}
+
 Console.WriteLine("---");
 Console.WriteLine($"{passed} passed, {failed} failed");
+
 return failed == 0 ? 0 : 1;
+
+sealed class FakeModelHandler : HttpMessageHandler
+{
+    public string ResponseJson = "{}";
+    public int Calls;
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Calls++;
+        string body = "{\"message\":{\"content\":" + System.Text.Json.JsonSerializer.Serialize(ResponseJson) + "}}";
+        return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"),
+        });
+    }
+}
+

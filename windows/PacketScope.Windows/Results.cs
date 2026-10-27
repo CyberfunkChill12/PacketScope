@@ -45,6 +45,7 @@ public sealed class ResultSummary
 {
     public string Headline = "", Body = "", NextStep = "";
     public bool FromTemplate = true;
+    public List<(string Text, string Anchor)> Citations = new();
 }
 
 public sealed class CaptureResults

@@ -32,6 +32,9 @@ public sealed class MainForm : Form
     private DateTimeOffset _captureStarted;
     private int _kernelDrops;
     private ThreatIntelSummary? _threatIntel;
+    private AiSettings _aiSettings = AiSettings.Load();
+    private ResultSummary? _aiSummary;
+    private readonly Dictionary<string, Control> _anchors = new();
     private CaptureReport? _baselineReport;
     private SessionContext? _baselineContext;
     private string? _baselineName;
@@ -511,6 +514,24 @@ public sealed class MainForm : Form
                 }
                 SetState("Capture complete", PrimaryText);
                 _nav.SelectedItem = "Results";
+                StartAiSummary();
+            });
+        });
+    }
+
+    private void StartAiSummary()
+    {
+        _aiSummary = null;
+        if (!_aiSettings.Enabled || _results == null) return;
+        var results = _results;
+        _ = Task.Run(async () =>
+        {
+            var summary = await ResultsSummaryService.SummarizeAsync(results, _aiSettings);
+            BeginInvoke(() =>
+            {
+                if (!ReferenceEquals(_results, results)) return; // a newer session owns the page
+                _aiSummary = summary;
+                if (_nav.SelectedItem?.ToString() == "Results") ShowPage("Results");
             });
         });
     }
@@ -536,16 +557,19 @@ public sealed class MainForm : Form
             return;
         }
         var r = _results;
+        _anchors.Clear();
         if (r.SecurityAlert != "none" && r.ThreatIntel != null)
             flow.Controls.Add(SecurityCard(r, r.ThreatIntel));
-        flow.Controls.Add(VerdictCard(r));
+        var verdictCard = VerdictCard(r);
+        _anchors["#verdict"] = verdictCard;
+        flow.Controls.Add(verdictCard);
         if (r.Verdict != "not_enough_traffic")
         {
-            flow.Controls.Add(CoverageCard(r));
-            flow.Controls.Add(PathCard(r));
-            if (r.Findings.Count > 0) flow.Controls.Add(FindingsCard(r));
-            flow.Controls.Add(DnsAndChecksCard(r));
-            flow.Controls.Add(DestinationsCard(r));
+            var coverage = CoverageCard(r); _anchors["#coverage"] = coverage; flow.Controls.Add(coverage);
+            var path = PathCard(r); _anchors["#path"] = path; flow.Controls.Add(path);
+            if (r.Findings.Count > 0) { var findings = FindingsCard(r); _anchors["#evidence"] = findings; flow.Controls.Add(findings); }
+            var dnsChecks = DnsAndChecksCard(r); _anchors["#dns"] = dnsChecks; flow.Controls.Add(dnsChecks);
+            var destinations = DestinationsCard(r); _anchors["#destinations"] = destinations; flow.Controls.Add(destinations);
             flow.Controls.Add(TimelineCard(r));
             flow.Controls.Add(Body("Built-in checks only see this device's traffic during the capture and can't read inside encrypted connections. Nothing flagged doesn't prove the network is healthy or secure.", 9));
         }
@@ -579,7 +603,7 @@ public sealed class MainForm : Form
             "no_problem_seen" => "No problem seen",
             _ => "Not enough traffic",
         };
-        var summary = r.TemplateSummary;
+        var summary = _aiSummary ?? r.TemplateSummary;
         layout.Controls.Add(H(status, 12, r.Verdict is "cause_found" ? Red : r.Verdict is "inconclusive" or "possible_issue" ? Amber : Teal));
         layout.Controls.Add(H(summary.Headline, 16));
         layout.Controls.Add(Body(summary.Body, 10.5f, PrimaryText));
@@ -608,7 +632,19 @@ public sealed class MainForm : Form
         exportBtn.Click += (_, _) => ExportRawCapture();
         buttons.Controls.Add(exportBtn);
         layout.Controls.Add(buttons);
-        layout.Controls.Add(Body($"Summary written from {Format.Count(r.Packets)} packets. Summary generated from checks (the Windows version does not use an AI summary). Goal: {r.GoalLabel} · {r.InterfaceName} · {Format.Duration(r.DurationSec)}", 9));
+        if (summary.Citations.Count > 0)
+        {
+            var cites = new FlowLayoutPanel { AutoSize = true };
+            foreach (var (text, anchor) in summary.Citations)
+            {
+                var btn = StyledButton(text, Elevated, Teal);
+                string target = anchor;
+                btn.Click += (_, _) => { if (_anchors.TryGetValue(target, out var card)) _content.ScrollControlIntoView(card); };
+                cites.Controls.Add(btn);
+            }
+            layout.Controls.Add(cites);
+        }
+        layout.Controls.Add(Body($"Summary written from {Format.Count(r.Packets)} packets. {(summary.FromTemplate ? "Summary generated from checks" : $"Wording by your local model ({_aiSettings.Model}) · the verdict was decided by checks — verify important conclusions against the findings below")}. Goal: {r.GoalLabel} · {r.InterfaceName} · {Format.Duration(r.DurationSec)}", 9));
         card.Controls.Add(layout);
         return card;
     }
@@ -1058,8 +1094,39 @@ public sealed class MainForm : Form
     {
         var flow = Flow();
         flow.Controls.Add(H("Ask capture", 24));
-        _useAiCheck = new CheckBox { Text = "Use on-device AI when available (not available in the Windows version — the local rules guide answers everything, and nothing leaves this device)", ForeColor = SecondaryText, AutoSize = true, Enabled = false };
+        flow.Controls.Add(H("Results summary wording (optional, local model)", 13));
+        flow.Controls.Add(Body("The verdict is always decided by the built-in checks. If you run a local model server on this device (for example Ollama), PacketScope can ask it to word the Results summary — validated against the measured numbers before it is shown, with the template summary as fallback. Only loopback endpoints are allowed, so summaries never leave this device. Ask answers always come from the local rules guide either way."));
+        _useAiCheck = new CheckBox { Text = "Use local AI to word the Results summary when available", ForeColor = PrimaryText, AutoSize = true, Checked = _aiSettings.Enabled };
         flow.Controls.Add(_useAiCheck);
+        var endpointBox = new TextBox { Width = 320, BackColor = Elevated, ForeColor = PrimaryText, Text = _aiSettings.Endpoint };
+        var modelBox = new TextBox { Width = 220, BackColor = Elevated, ForeColor = PrimaryText, Text = _aiSettings.Model };
+        var aiRow = new FlowLayoutPanel { AutoSize = true };
+        aiRow.Controls.Add(new Label { Text = "Endpoint", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(0, 6, 6, 0) });
+        aiRow.Controls.Add(endpointBox);
+        aiRow.Controls.Add(new Label { Text = "Model", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(12, 6, 6, 0) });
+        aiRow.Controls.Add(modelBox);
+        var saveAi = StyledButton("Save AI settings", Elevated, PrimaryText);
+        var aiStatus = Body("", 9);
+        saveAi.Click += (_, _) =>
+        {
+            _aiSettings.Enabled = _useAiCheck.Checked;
+            _aiSettings.Endpoint = endpointBox.Text.Trim();
+            _aiSettings.Model = modelBox.Text.Trim();
+            if (_aiSettings.ValidationError is { } problem)
+            {
+                aiStatus.Text = problem;
+                aiStatus.ForeColor = Amber;
+                return;
+            }
+            _aiSettings.Save();
+            aiStatus.Text = _aiSettings.Enabled ? "Saved. New analyses will ask the local model to word the summary (validated, with template fallback)." : "Saved. AI wording is off; template summaries will be used.";
+            aiStatus.ForeColor = Teal;
+            StartAiSummary();
+        };
+        aiRow.Controls.Add(saveAi);
+        flow.Controls.Add(aiRow);
+        flow.Controls.Add(aiStatus);
+        flow.Controls.Add(H("Ask about this capture", 13));
         _chatList = new ListBox { Width = 940, Height = 380, BackColor = PanelBg, ForeColor = PrimaryText, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 10) };
         flow.Controls.Add(_chatList);
         foreach (var suggestion in new[] { "Why was this flagged?", "What should I check first?", "What happened near my marked moments?", "Which apps were communicating?", "What changed between captures?" })

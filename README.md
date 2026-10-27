@@ -71,8 +71,9 @@ matching). Download `PacketScope-Windows.zip` from the
 [Npcap](https://npcap.com) for live capture, and run `PacketScope.exe`.
 Importing and analyzing capture files works without Npcap. See
 [`windows/README-WINDOWS.md`](windows/README-WINDOWS.md) for its feature
-scope and differences from the macOS app (no AI summary; QUIC names not
-yet extracted; process attribution is endpoint-matched and approximate).
+scope and differences from the macOS app (optional local-model AI summary,
+validated with template fallback; QUIC names not yet extracted; process
+attribution is endpoint-matched and approximate).
 
 ## Building from source
 
