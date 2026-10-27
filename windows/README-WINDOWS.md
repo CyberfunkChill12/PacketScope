@@ -6,6 +6,24 @@ the problem and mark the moment → stop → read a plain-language verdict with
 evidence, on its own page, next to any security signal from local threat
 feeds.
 
+## Requirements (Windows)
+
+| Requirement | Needed for | Notes |
+| --- | --- | --- |
+| **Windows 10 or Windows 11, 64-bit (x64)** | Everything | The published build is `win-x64`. ARM64 Windows is not published yet. |
+| **[Npcap](https://npcap.com) (free)** | Live capture only | PacketScope captures through Npcap's `wpcap.dll`. Install it before your first live capture, and keep the default “WinPcap API-compatible mode” option checked during Npcap setup. |
+| **Administrator rights** | Sometimes, for live capture | If opening an adapter fails (Npcap installed with admin-only access), right-click `PacketScope.exe` → **Run as administrator**. The app itself is a normal user program and never asks for your password. |
+| **Internet connection** | Threat feeds, optional AI setup | Only used to download the threat-feed files (and anything you choose to install). Matching and analysis are fully local. |
+| **[Ollama](https://ollama.com) (free, optional)** | Optional AI summary wording | Only if you want the local-model summary: install Ollama, pull a model (for example `ollama pull llama3.1:8b`), and enable it under Ask capture → “Results summary wording”. Loopback only; no cloud model is ever used. |
+| **~200 MB free disk space** | The app itself | The executable is self-contained. Captures and sessions are stored under `%LocalAppData%\PacketScope\` and can grow with use; each capture is capped at 100 MiB. |
+
+**You do NOT need:** .NET (the executable is self-contained), Python,
+Wireshark, an account, or an API key. An abuse.ch Auth-Key is optional and
+only unlocks the hidden ThreatFox/URLhaus feeds.
+
+**Importing and analyzing existing capture files works with none of the
+above** — no Npcap, no administrator rights, no internet.
+
 ## Download and run
 
 1. Download **PacketScope-Windows.zip** from the
