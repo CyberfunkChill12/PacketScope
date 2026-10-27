@@ -1,0 +1,53 @@
+PacketScope 0.2.0 — START HERE
+================================
+
+WHAT IT IS
+PacketScope is a lightweight packet capture and explanation tool for Mac
+users and network administrators. Pick what you are troubleshooting, run a
+real capture while you reproduce the problem, mark the moment it happens,
+then read measured explanations, compare before/after, and optionally share
+a privacy-controlled support report.
+
+RUNNING
+1. Open PacketScope.app. This development demo is ad hoc signed (not
+   Developer ID signed or notarized). On first launch, right-click the app
+   and choose Open if macOS asks you to confirm.
+2. Pick a goal on the Overview screen and an interface in the sidebar
+   (usually the physical en0 interface, or lo0 for traffic on the Mac
+   itself). Press "Start capture".
+3. macOS will ask for administrator approval. This is required because
+   packet capture is privileged; PacketScope never sees or stores your
+   password, and no background service is installed.
+4. Reproduce the problem. Press "It happened just now" the moment it
+   occurs to save a marker. Press "Stop & analyze".
+5. Everything is analyzed on your Mac. No data is uploaded.
+
+YOUR OWN LOG FILES
+- On the Capture page, use "Analyze your own log file" (or drag and drop
+  the file onto the page) to import a classic PCAP capture log from
+  Wireshark, tcpdump, or another tool. It is analyzed exactly like a
+  PacketScope capture and opens the same Results page. Your original file
+  is preserved and no administrator authorization is needed. PCAPNG and
+  plain-text logs are explained rather than analyzed.
+
+GOOD TO KNOW
+- Capture shows traffic visible to the selected interface — usually this
+  Mac's traffic, not the whole local network.
+- It can also open existing classic PCAP files (File > Open PCAP). That
+  needs no admin approval, and your original file is preserved.
+- Encrypted traffic is not and cannot be decrypted. Plaintext seen between
+  loopback addresses is informational: it stayed on this Mac.
+- Process names appear only when macOS PKTAP metadata is present.
+  "Unknown" ownership is normal for many records and is not suspicious.
+- "Share with support" previews a redacted plain-text report; IP addresses,
+  domain names, and your notes are off by default. Exporting the raw capture
+  is separate and keeps the original file unchanged.
+- Sessions live in ~/Library/Application Support/PacketScope/Sessions and
+  are never uploaded.
+
+LIMITS
+- macOS 13.0 or later. On Macs with macOS 26+, an optional on-device Apple
+  Intelligence explanation is available; otherwise the local rules guide
+  answers every question.
+- The GUI never runs as root. A small bundled helper performs the capture
+  and drops privileges before writing any files.

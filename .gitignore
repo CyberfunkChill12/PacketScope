@@ -1,0 +1,15 @@
+# Build outputs
+build/
+dist/
+
+# macOS
+.DS_Store
+
+# Local tooling / secrets
+.env
+*.pem
+*.key
+
+# Editor
+*.swp
+*~
