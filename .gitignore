@@ -13,3 +13,7 @@ dist/
 # Editor
 *.swp
 *~
+
+# .NET
+bin/
+obj/

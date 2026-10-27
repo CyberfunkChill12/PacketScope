@@ -64,11 +64,15 @@ right-click the app and choose **Open**. Capturing asks for administrator
 approval via the standard macOS prompt; opening existing capture files
 needs no approval.
 
-**Windows:** PacketScope is a native macOS application (SwiftUI UI, macOS
-BPF capture with PKTAP process attribution, Keychain storage, optional
-Apple FoundationModels). **There is no Windows version**, and the macOS
-app cannot run on Windows. A Windows port would need a different capture
-layer (Npcap) and privilege model and is not part of this release.
+**Windows:** a Windows version lives in [`windows/`](windows/) (native
+C#/.NET WinForms; live capture through Npcap, fully local threat-intel
+matching). Download `PacketScope-Windows.zip` from the
+[windows-v0.1.0 release](../../releases/tag/windows-v0.1.0), unzip, install
+[Npcap](https://npcap.com) for live capture, and run `PacketScope.exe`.
+Importing and analyzing capture files works without Npcap. See
+[`windows/README-WINDOWS.md`](windows/README-WINDOWS.md) for its feature
+scope and differences from the macOS app (no AI summary; QUIC names not
+yet extracted; process attribution is endpoint-matched and approximate).
 
 ## Building from source
 
