@@ -69,9 +69,15 @@ C#/.NET WinForms; live capture through Npcap, fully local threat-intel
 matching). Download `PacketScope-Windows.zip` from the
 [windows-v0.1.0 release](../../releases/tag/windows-v0.1.0), unzip, install
 [Npcap](https://npcap.com) for live capture, and run `PacketScope.exe`.
-**Windows requirements:** Windows 10/11 64-bit; Npcap for live capture
-(administrator rights may be needed if an adapter won't open); no .NET
-install needed (self-contained); optional Ollama for the local AI summary.
+
+
+**Windows requirements:** 
+- Windows 10/11 64-bit;
+- Npcap for live capture
+(administrator rights may be needed if an adapter won't open);
+- no .NET install needed (self-contained);
+- optional Ollama for the local AI summary.
+  
 Importing and analyzing capture files works without Npcap. See
 [`windows/README-WINDOWS.md`](windows/README-WINDOWS.md) for its feature
 scope and differences from the macOS app (optional local-model AI summary,
