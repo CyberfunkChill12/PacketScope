@@ -71,6 +71,19 @@ matching). Download `PacketScope-Windows.zip` from the
 [Npcap](https://npcap.com) for live capture, and run `PacketScope.exe`.
 
 
+## Building from source
+
+## Requirements
+
+**macOS requirements:** 
+- Runtime: macOS 13.0 or later (universal `arm64` + `x86_64`).
+- Build: Xcode command-line tools, `clang`, and `swiftc` in Swift 5 language
+  mode. No Xcode project, no third-party packages, nothing to install from
+  Homebrew. The bundled C helper links the system `libpcap`.
+- Capturing asks for administrator approval via the native macOS prompt
+  (the GUI never runs as root, and PocketScope never sees your password).
+  Opening existing PCAP files needs no approval.
+
 **Windows requirements:** 
 - Windows 10/11 64-bit;
 - Npcap for live capture
@@ -83,18 +96,6 @@ Importing and analyzing capture files works without Npcap. See
 scope and differences from the macOS app (optional local-model AI summary,
 validated with template fallback; QUIC names not yet extracted; process
 attribution is endpoint-matched and approximate).
-
-## Building from source
-
-## Requirements
-
-- Runtime: macOS 13.0 or later (universal `arm64` + `x86_64`).
-- Build: Xcode command-line tools, `clang`, and `swiftc` in Swift 5 language
-  mode. No Xcode project, no third-party packages, nothing to install from
-  Homebrew. The bundled C helper links the system `libpcap`.
-- Capturing asks for administrator approval via the native macOS prompt
-  (the GUI never runs as root, and PocketScope never sees your password).
-  Opening existing PCAP files needs no approval.
 
 ## Build, test, and package
 
