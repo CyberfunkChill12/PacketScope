@@ -218,6 +218,50 @@ ipv4,10.0.0.5,botnet_c2,high
     Check(!aiResults.TemplateSummary.Headline.Equals("", StringComparison.Ordinal), "template summary is never empty");
 }
 
+
+// 8. Display filters match Wireshark counts (tshark, when available)
+{
+    string? tshark = new[] { @"C:\Program Files\Wireshark\tshark.exe", "/opt/homebrew/bin/tshark", "/usr/local/bin/tshark" }
+        .FirstOrDefault(File.Exists);
+    if (tshark == null)
+    {
+        Console.WriteLine("NOTE: tshark not installed; filter-count check skipped");
+    }
+    else
+    {
+        int TsharkCount(string pcap, string filter)
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo(tshark, $"-r \"{pcap}\" -Y \"{filter.Replace("\"", "\\\"")}\" -T fields -e frame.number")
+            { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+            using var proc = System.Diagnostics.Process.Start(psi)!;
+            string output = proc.StandardOutput.ReadToEnd();
+            proc.WaitForExit();
+            return output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
+        }
+        var pkts = new List<(double, byte[])>
+        {
+            (1000, UdpDns("192.168.1.23", "192.168.1.1", 40000, 53, DnsMsg(7, false, 0, "silent.example.com"))),
+            (1001, Tcp("192.168.1.23", "203.0.113.10", 51544, 443, 0x02)),
+            (1002, Tcp("192.168.1.23", "203.0.113.10", 51544, 443, 0x02)),
+            (1003, Tcp("192.168.1.23", "203.0.113.10", 51544, 443, 0x02)),
+        };
+        for (int i = 0; i < 10; i++) pkts.Add((1030 + i, Tcp("192.168.1.23", "203.0.113.99", 51000, 443, 0x10)));
+        string dir = Path.Combine(Path.GetTempPath(), "ps-win-filter-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        string pcapPath = Path.Combine(dir, "fixture.pcap");
+        File.WriteAllBytes(pcapPath, Pcap(101, pkts));
+        var rep = PacketAnalyzer.Analyze(pcapPath);
+        var unanswered = rep.Facts!.Checks.First(c => c.Id == "tcp-unanswered");
+        Eq(unanswered.Count, 3, "windows unanswered count");
+        Check(unanswered.Filter.StartsWith("frame.number in {"), "windows unanswered filter built from frames");
+        Eq(TsharkCount(pcapPath, unanswered.Filter), 3, "tshark matches the shown unanswered count");
+        var dnsCheck = rep.Facts!.Checks.First(c => c.Id == "dns-unanswered");
+        Eq(dnsCheck.Filter, "dns.flags.response == 0 && !dns.response_in", "windows unanswered-DNS filter");
+        Eq(TsharkCount(pcapPath, dnsCheck.Filter), 1, "tshark matches the shown unanswered-DNS count");
+        Directory.Delete(dir, true);
+    }
+}
+
 Console.WriteLine("---");
 Console.WriteLine($"{passed} passed, {failed} failed");
 

@@ -14,6 +14,7 @@ rm -rf "$STAGE" "$ROOT/dist/PacketScope-macOS.zip"
 mkdir -p "$STAGE/PacketScope Demo"
 ditto "$ROOT/dist/PacketScope.app" "$STAGE/PacketScope Demo/PacketScope.app"
 cp "$ROOT/PacketScope/QUICKSTART.txt" "$STAGE/PacketScope Demo/START HERE.txt"
+cp -R "$ROOT/samples" "$STAGE/PacketScope Demo/samples"
 # No test captures, session data, caches, credentials, or logs belong in the package.
 find "$STAGE" -name "*.pcap" -o -name "status.json" -o -name ".DS_Store" | xargs rm -f 2>/dev/null || true
 

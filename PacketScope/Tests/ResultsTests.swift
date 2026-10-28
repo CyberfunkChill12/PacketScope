@@ -83,7 +83,7 @@ func registerResultsTests() {
         T.expectEqual(finding?.severity, "likely_cause")
         T.expectEqual(finding?.evidence.count, 6)
         T.expectEqual(finding?.evidence.frames.count, 6)
-        T.expect(finding?.evidence.filter.contains("203.0.113.10") ?? false)
+        T.expect(finding?.evidence.filter.hasPrefix("frame.number in {") ?? false, "unanswered evidence filter must be built from evidence frames, got \(finding?.evidence.filter ?? "-")")
         _ = rep
     }
 
@@ -212,6 +212,46 @@ func registerResultsTests() {
         T.expectEqual(r.verdict, "cause_found")
         T.expect(r.findings.contains { $0.id == "unanswered-connection" })
         T.expect(r.paths.first(where: { $0.destination == "api.example.com" })?.stages.first(where: { $0.id == "tcp" })?.status == "failed")
+    }
+    T.test("display filters match Wireshark counts (tshark, when available)") {
+        // Locate tshark; skip quietly where it is not installed (dev tool only).
+        let tsharkPath = ["/opt/homebrew/bin/tshark", "/usr/local/bin/tshark", "/usr/bin/tshark"].first { FileManager.default.isExecutableFile(atPath: $0) }
+        guard let tsharkPath = tsharkPath else { print("NOTE: tshark not installed; filter-count check skipped"); return }
+        func tsharkCount(_ pcap: URL, _ filter: String) -> Int {
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: tsharkPath)
+            proc.arguments = ["-r", pcap.path, "-Y", filter, "-T", "fields", "-e", "frame.number"]
+            let out = Pipe(); proc.standardOutput = out; proc.standardError = Pipe()
+            try! proc.run()
+            let data = out.fileHandleForReading.readDataToEndOfFile()
+            proc.waitUntilExit()
+            return String(data: data, encoding: .utf8)?.split(whereSeparator: { $0 == "\n" }).count ?? -1
+        }
+        // Fixture: 3 unanswered SYNs + 1 unanswered DNS query.
+        var pkts: [(Double, [UInt8])] = []
+        pkts.append((0, ethUDP(src: "192.168.1.23", dst: "192.168.1.1", sport: 40000, dport: 53, payload: dnsMessage(id: 7, response: false, name: "silent.example.com"))))
+        for i in 0..<3 { pkts.append((1 + Double(i), syn("192.168.1.23", "203.0.113.10", 51544, 443))) }
+        for i in 0..<10 { pkts.append((30 + Double(i), ethTCP(src: "192.168.1.23", dst: "203.0.113.99", sport: 51000, dport: 443, flags: 0x10))) }
+        // syn() builds Ethernet frames; analyze as Ethernet here.
+        let data = buildPCAP(linkType: 1, packets: pkts.map { (1000 + $0.0, $0.1) })
+        let dir = NSTemporaryDirectory() + "ps-filter-\(UUID().uuidString)"
+        try! FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let url = URL(fileURLWithPath: dir + "/fixture.pcap")
+        try! data.write(to: url)
+        let rep = try! PacketAnalyzer.analyze(url: url)
+        let unansweredCheck = rep.facts?.checks.first { $0.id == "tcp-unanswered" }
+        T.expectEqual(unansweredCheck?.count, 3)
+        T.expect(unansweredCheck?.filter.hasPrefix("frame.number in {") ?? false)
+        T.expectEqual(tsharkCount(url, unansweredCheck?.filter ?? ""), 3, "tshark must match the shown unanswered count")
+        let dnsCheck = rep.facts?.checks.first { $0.id == "dns-unanswered" }
+        T.expectEqual(dnsCheck?.count, 1)
+        T.expectEqual(dnsCheck?.filter, "dns.flags.response == 0 && !dns.response_in")
+        T.expectEqual(tsharkCount(url, dnsCheck?.filter ?? ""), 1, "tshark must match the shown unanswered-DNS count")
+        // The finding evidence filter reproduces the SYN packets exactly.
+        let r = CaptureResultsBuilder.build(report: rep, context: SessionContext(goal: .website, interface: "en0"), kernelDrops: 0)
+        let finding = r.findings.first { $0.id == "unanswered-connection" }
+        T.expectEqual(tsharkCount(url, finding?.evidence.filter ?? ""), 3, "tshark must match the finding evidence count")
     }
     T.test("export these packets writes only the listed frames") {
         let pkts: [(Double, [UInt8])] = (0..<5).map { (Double($0), ethUDP(src: "10.0.0.1", dst: "10.0.0.2", sport: 1000, dport: 2000, payload: [UInt8($0)])) }

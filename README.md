@@ -1,12 +1,39 @@
 # PacketScope 0.2.0
 
-A lightweight, native macOS packet capture and explanation tool for everyday
-Mac users and network administrators.
+**When a website won't load, a call freezes, or something is quietly talking
+in the background, the honest answer is usually inside the traffic — but the
+tools that can read it (Wireshark, tcpdump) assume you already speak packets.**
+PacketScope is for everyday Mac users who need an answer they can act on, and
+for the administrators they escalate to. You pick the problem in plain words,
+capture while it happens, mark the moment it bites, and get back a verdict you
+can verify: what was observed, what it most likely means, exactly which packets
+prove it, and what to try next — with a separate, clearly-labeled security
+signal when a destination appears in a threat feed. Unlike cloud dashboards,
+everything (capture, analysis, threat matching, and the optional AI wording)
+runs **on your Mac**, and unlike a raw packet tool, every number on the page
+links to its evidence. A native Windows version with the same workflow lives
+in [`windows/`](windows/).
 
 **Journey:** choose a troubleshooting question → start a real capture →
 reproduce the symptom → mark the relevant moment → stop → understand the
 measured evidence → try a change and compare → optionally save a support
 report.
+
+## Screenshots
+
+![Results page for a capture where a destination never answered](docs/screenshots/results-wont-connect.png)
+*The Results page for the bundled `unanswered-connection.pcap` sample: Step 3
+of the connection path is where it broke, with the SYN packets as evidence.*
+
+![Security card above the goal verdict](docs/screenshots/security-card.png)
+*A high-severity threat-feed match adds a security card above the (unchanged)
+troubleshooting answer.*
+
+![Threat feeds settings](docs/screenshots/threat-feeds.png)
+*Feeds are local files with visible freshness, counts, and licenses.*
+
+![Before/after comparison](docs/screenshots/compare.png)
+*Before/after comparison with denominators and comparability warnings.*
 
 ## Features
 
@@ -49,18 +76,39 @@ report.
    page. PCAPNG and plain-text files get a clear explanation instead.
 8. **Packet and endpoint inspection** — timeline (Apple Charts, amber
    markers), packet log with search, and endpoints.
+9. **Threat intelligence (fully offline)** — destinations, DNS names, SNI,
+   HTTP hosts/URLs, certificate hashes, and JA3/JA4 fingerprints from each
+   capture are matched on this Mac against downloaded copies of Feodo
+   Tracker, Spamhaus DROP, and the SSLBL certificate list (updated in the
+   background with strict validation; never any per-address online lookup).
+   Matches are grouped as one security finding per destination under a
+   security card that sits beside — never inside — your troubleshooting
+   verdict, with severity reasons, an allowlist, custom feeds, and
+   Keychain-stored keys for the optional keyed feeds. Nothing about a
+   capture is ever sent to a feed provider.
 
 All analysis, session storage, and optional inference stay on the Mac.
 There is no telemetry, external reputation lookup, reverse-DNS lookup, or
 cloud inference.
 
+**Try it in two minutes, no admin rights needed:** the `samples/` folder
+(included in both release ZIPs) has three small captures recorded against
+reserved test addresses — `unanswered-connection.pcap` (a destination that
+never replies), `name-not-found.pcap` (a name that does not exist), and
+`threat-demo.pcap` plus `threat-demo-feed.txt`. Import one on the Capture
+page and PacketScope walks you to its Results page. For the threat demo,
+first add the feed file under Threat feeds → Add a custom feed (Type:
+Domain, Format: one indicator per line), then import `threat-demo.pcap`.
+
 ## Download
 
 **macOS ( Apple Silicon and Intel ):** download `PacketScope-macOS.zip`
-from the [latest release](../../releases/latest), unzip it, and open
+from the macOS release, unzip it, and open
 `PacketScope.app` inside the "PacketScope Demo" folder. Requires macOS 13.0
-or later. The build is ad hoc signed (not notarized), so on first launch
-right-click the app and choose **Open**. Capturing asks for administrator
+or later. The build is ad hoc signed (not notarized). On first launch macOS will
+refuse to open it: open the app once, then go to **System Settings →
+Privacy & Security** and click **Open Anyway**, then open it again.
+Capturing asks for administrator
 approval via the standard macOS prompt; opening existing capture files
 needs no approval.
 
@@ -189,7 +237,7 @@ PacketScope/
     FeatureViews.swift     # guided setup, timeline/apps/compare/Q&A/history/support
   Helper/capture.c         # packetscope-capture (libpcap, PKTAP, privilege drop)
   Resources/Info.plist
-  Tests/                   # 80 automated test cases + live_traffic.py (dev only)
+  Tests/                   # 116 automated macOS test cases + live_traffic.py (dev only)
   QUICKSTART.txt
 scripts/  build.sh  package.sh  test.sh  make_icon.swift
 ```
@@ -231,9 +279,10 @@ table, and a timeline with marked moments. Destination names come from DNS
 answers or TLS ClientHello SNI, never from payload contents, and credentials
 or payload data are never sent to the summarizer.
 
-## Verification status (October 26, 2026 run)
+## Verification status (October 28, 2026 run)
 
-- All 80 automated test cases pass (`bash scripts/test.sh`): parser bounds,
+- All 116 automated macOS test cases pass (`bash scripts/test.sh`), and the
+  Windows harness passes 34/34 (`windows/PacketScope.Tests`): parser bounds,
   both byte orders and timestamp resolutions, supported link types,
   full-file statistics beyond the 2,000 displayed rows, DNS matching with
   retry/duplicate/mDNS exclusions, PKTAP v1/v2 attribution, loopback vs
@@ -253,11 +302,23 @@ or payload data are never sent to the summarizer.
 - A real on-device model answer was exercised when the current machine's
   Apple Intelligence model reported available; the rules-only path is
   covered by the automated tests and is always available.
+- Threat-intel fixtures all behave as specified against the synthetic test
+  feed, and the fixed evidence filters were checked with Wireshark's tshark:
+  the match count for each frame-list filter and for
+  `dns.flags.response == 0 && !dns.response_in` equals the count the app
+  shows, including on the bundled sample captures. JA3/JA4 output is
+  byte-identical to tshark's on the same ClientHellos (GREASE-safe).
+- The sample captures in `samples/` were recorded live against reserved
+  test addresses (an unanswered `curl` to 203.0.113.10, an NXDOMAIN lookup,
+  and a real `example.com` connection for the threat demo).
 
 ## Not in this version
 
 No whole-LAN visibility claim, packet decryption, TLS interception, PCAPNG
 support, full TCP-stream/IP-fragment reassembly, DNS reassembly across TCP
-segments, firewall blocking, intrusion prevention, malware verdicts, public
-reputation scoring, cloud chatbot, autonomous remediation, automatic sharing,
-or background monitoring service.
+segments, firewall blocking, intrusion prevention, or malware verdicts.
+There are **no online reputation lookups** and no cloud chatbot: threat
+matching is done entirely offline against downloaded feed copies (see
+feature 9), and no address, domain, or hash from a capture is ever sent to
+a lookup service. Also out of scope: autonomous remediation, automatic
+sharing, and any background monitoring service.

@@ -148,7 +148,7 @@ public static class CaptureResultsBuilder
             {
                 Id = f.Id, Severity = sev, Title = f.Title, Observed = f.Evidence, Interpretation = interpretation,
                 Confidence = sev == "likely_cause" ? "high" : sev == "warning" ? "medium" : "low",
-                Evidence = new EvidenceRef { Filter = FilterFor(f.Id), Frames = f.PacketNumbers.Take(200).ToList(), Count = f.PacketNumbers.Count },
+                Evidence = new EvidenceRef { Filter = f.Id == "unanswered-connection" && f.PacketNumbers.Count > 0 ? "frame.number in {" + string.Join(", ", f.PacketNumbers.Take(200)) + "}" : FilterFor(f.Id), Frames = f.PacketNumbers.Take(200).ToList(), Count = f.PacketNumbers.Count },
                 NextSteps = steps,
             });
         }
@@ -160,7 +160,7 @@ public static class CaptureResultsBuilder
     {
         "dns-errors" or "dns-name-not-found" => "dns.flags.response == 1 && dns.flags.rcode != 0",
         "tcp-resets" or "refused-connection" => "tcp.flags.reset == 1",
-        "unanswered-connection" => "tcp.flags.syn == 1 && tcp.flags.ack == 0",
+        "unanswered-connection" => "", // built from evidence frames in BuildFindings
         "tls-alerts" => "tls.record.content_type == 21",
         "plaintext-remote" or "plaintext-local" => "http || ftp || smtp",
         _ => "",

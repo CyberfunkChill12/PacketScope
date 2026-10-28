@@ -197,17 +197,6 @@ public sealed class MainForm : Form
         card.Controls.Add(layout);
         flow.Controls.Add(card);
 
-        // Import card
-        var importCard = Card();
-        var importLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, AutoSize = true, Width = 940 };
-        importLayout.Controls.Add(H("Analyze your own log file", 15));
-        importLayout.Controls.Add(Body("Already have a packet capture log from Wireshark, tcpdump, or another tool? Choose it here, or drag and drop the file onto this page. PacketScope analyzes it exactly like a capture recorded here — same checks, same Results page, same insights. Your original file is never changed, and no administrator authorization is needed. Classic PCAP only (up to 100 MiB); PCAPNG and plain-text logs get a clear explanation instead."));
-        var chooseBtn = StyledButton("Choose log file…", Teal, Color.Black);
-        chooseBtn.Click += (_, _) => ImportWithDialog();
-        importLayout.Controls.Add(chooseBtn);
-        importCard.Controls.Add(importLayout);
-        flow.Controls.Add(importCard);
-
         flow.Controls.Add(H("What are you troubleshooting?", 18));
         string[] goals = Enum.GetNames<CaptureGoal>();
         _goalRadios = new RadioButton[goals.Length];

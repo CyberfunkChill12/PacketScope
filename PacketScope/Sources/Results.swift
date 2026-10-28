@@ -583,7 +583,8 @@ public enum CaptureResultsBuilder {
             }
             var evidence = EvidenceRef(filter: filter(for: f.id, report: report), frames: f.packetNumbers, count: f.packetNumbers.count)
             if f.id == "unanswered-connection", let dest = report.facts?.destinations.first(where: { $0.outcome == "no_reply" }) {
-                evidence = EvidenceRef(filter: "ip.dst==\(dest.address) && tcp.dstport==\(dest.port) && tcp.flags.syn==1 && tcp.flags.ack==0", frames: dest.packetNumbers, count: dest.attempts)
+                let frames = Array(dest.packetNumbers.prefix(200))
+                evidence = EvidenceRef(filter: frames.isEmpty ? "" : "frame.number in {" + frames.map(String.init).joined(separator: ", ") + "}", frames: frames, count: dest.attempts)
             }
             if f.id == "refused-connection", let dest = report.facts?.destinations.first(where: { $0.outcome == "refused" }) {
                 evidence = EvidenceRef(filter: "ip.addr==\(dest.address) && tcp.port==\(dest.port) && tcp.flags.reset==1", frames: f.packetNumbers, count: f.packetNumbers.count)

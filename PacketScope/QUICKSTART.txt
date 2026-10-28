@@ -10,8 +10,9 @@ a privacy-controlled support report.
 
 RUNNING
 1. Open PacketScope.app. This development demo is ad hoc signed (not
-   Developer ID signed or notarized). On first launch, right-click the app
-   and choose Open if macOS asks you to confirm.
+   Developer ID signed or notarized). macOS will refuse it the first
+   time: open the app once, then go to System Settings > Privacy &
+   Security and click "Open Anyway", then open it again.
 2. Pick a goal on the Overview screen and an interface in the sidebar
    (usually the physical en0 interface, or lo0 for traffic on the Mac
    itself). Press "Start capture".
@@ -23,12 +24,21 @@ RUNNING
 5. Everything is analyzed on your Mac. No data is uploaded.
 
 YOUR OWN LOG FILES
-- On the Capture page, use "Analyze your own log file" (or drag and drop
+- On the Capture page, use "Import log file" (or drag and drop
   the file onto the page) to import a classic PCAP capture log from
   Wireshark, tcpdump, or another tool. It is analyzed exactly like a
   PacketScope capture and opens the same Results page. Your original file
   is preserved and no administrator authorization is needed. PCAPNG and
   plain-text logs are explained rather than analyzed.
+
+TRY THE SAMPLES FIRST (no admin rights needed)
+- The samples folder next to this file has three small captures recorded
+  against reserved test addresses. Use "Import log file" on the Capture
+  page: unanswered-connection.pcap (a destination that never replies),
+  name-not-found.pcap (a name that does not exist), and
+  threat-demo.pcap. For the threat demo, first add
+  threat-demo-feed.txt under Threat feeds > Add a custom feed (Type:
+  Domain, Format: one indicator per line), then import threat-demo.pcap.
 
 GOOD TO KNOW
 - Capture shows traffic visible to the selected interface — usually this

@@ -169,7 +169,6 @@ struct OverviewView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
                 .multilineTextAlignment(.center)
             CaptureControlsView()
-            ImportLogCardView()
             Text("What are you troubleshooting?")
                 .font(.system(size: 22, weight: .semibold))
                 .frame(maxWidth: .infinity, alignment: .center)
@@ -305,37 +304,6 @@ struct CaptureControlsView: View {
                     .disabled(model.state.isBusy)
                 }
             }
-        }
-        .frame(maxWidth: .infinity, alignment: .center)
-        .psCard()
-    }
-}
-
-
-// MARK: - Import your own log file
-
-struct ImportLogCardView: View {
-    @EnvironmentObject var model: AppModel
-    var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            Image(systemName: "doc.badge.plus").font(.system(size: 26)).foregroundColor(PS.teal)
-            Text("Analyze your own log file")
-                .font(.system(size: 19, weight: .semibold))
-            Text("Already have a packet capture log from Wireshark, tcpdump, or another tool? Drop the file anywhere on this page, or choose it below. PacketScope will analyze it exactly like a capture recorded here — same checks, same Results page, same insights. Your original file is never changed, and no administrator authorization is needed.")
-                .font(.system(size: 12.5)).foregroundColor(PS.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 680)
-            Button { model.presentOpenPanel() } label: {
-                Label("Choose log file…", systemImage: "square.and.arrow.down")
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(minWidth: 240, minHeight: 52)
-            }
-            .buttonStyle(.borderedProminent).tint(PS.teal).foregroundColor(.black).controlSize(.large)
-            .disabled(model.state.isBusy || model.isCapturing)
-            Text("Classic PCAP files (.pcap, .cap, or any name — the contents are checked). Up to 100 MiB. PCAPNG and plain-text logs get a clear explanation instead of results.")
-                .font(.system(size: 11)).foregroundColor(PS.secondary)
-                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .psCard()

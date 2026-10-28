@@ -28,6 +28,9 @@ above** — no Npcap, no administrator rights, no internet.
 
 1. Download **PacketScope-Windows.zip** from the
    [windows-v0.1.0 release](../../releases/tag/windows-v0.1.0) and unzip it.
+   On first run, SmartScreen may warn that Windows protected your PC —
+   click **More info**, then **Run anyway**. The build is not code-signed,
+   so this is expected for this version.
 2. For **live capture**, install [Npcap](https://npcap.com) (free) first —
    PacketScope captures through Npcap's `wpcap.dll`. If opening an adapter
    fails, run PacketScope as administrator. **Importing and analyzing
