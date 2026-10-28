@@ -73,6 +73,60 @@ matching). Download `PacketScope-Windows.zip` from the
 
 ## Building from source
 
+This repository contains two independent native implementations of
+PacketScope: the macOS app at the project root and the Windows app under
+[`windows/`](windows/). Clone the repository first:
+
+```sh
+git clone https://github.com/CyberfunkChill12/PacketScope.git
+cd PacketScope
+```
+
+### macOS app
+
+You need a Mac running a version of macOS supported by the current Xcode
+command-line tools. The Mac app is built directly with `clang` and `swiftc`
+in Swift 5 language mode; there is no Xcode project and no third-party
+package to install.
+
+```sh
+bash scripts/build.sh
+open dist/PacketScope.app
+```
+
+This produces a universal `arm64` + `x86_64` build in
+`dist/PacketScope.app`. Use the test and packaging commands in the
+**Build, test, and package** section below when you need the full verified
+build or the distributable macOS ZIP.
+
+### Windows app
+
+On Windows 10 or 11 (64-bit), install the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0),
+then build a self-contained executable:
+
+```powershell
+cd windows\PacketScope.Windows
+dotnet publish -c Release -r win-x64 --self-contained true
+```
+
+The published `PacketScope.exe` is written to
+`bin\Release\net8.0-windows\win-x64\publish\`. Npcap is a runtime
+requirement for live capture only; it is not needed to compile the app or
+to import and analyze existing capture files.
+
+Run the Windows analyzer, results-builder, threat-intel, and AI-summary
+validation tests with:
+
+```powershell
+cd ..\PacketScope.Tests
+dotnet run -c Release
+```
+
+The Windows project can be compiled from macOS or Linux because Windows
+targeting is enabled in the project file, but the GUI and Npcap capture can
+only run on Windows. See [`windows/README-WINDOWS.md`](windows/README-WINDOWS.md)
+for the Windows feature scope and limitations.
+
 ## Requirements
 
 **macOS requirements:** 
