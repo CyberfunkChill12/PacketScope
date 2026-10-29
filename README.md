@@ -1,42 +1,55 @@
-# PacketScope 0.2.0
+# PacketScope
 
-**When a website won't load, a call freezes, or something is quietly talking
-in the background, the honest answer is usually inside the traffic — but the
-tools that can read it (Wireshark, tcpdump) assume you already speak packets.**
+**PacketScope records your network traffic while a problem happens, then
+tells you in plain language what went wrong, and shows the packets that
+prove it.** Everything runs on your own computer. It's available for macOS,
+with a Windows version in [`windows/`](windows/).
 
-PacketScope is for everyday users who need an answer they can act on, and
-for the administrators they escalate to. You pick the problem in plain words,
-capture while it happens, mark the moment it bites, and get back a verdict you
-can verify: what was observed, what it most likely means, exactly which packets
-prove it, and what to try next — with a separate, clearly-labeled security
-signal when a destination appears in a threat feed. Unlike cloud dashboards,
-everything (capture, analysis, threat matching, and the optional AI wording)
-runs **on your Mac**, and unlike a raw packet tool, every number on the page
-links to its evidence. A native Windows version with the same workflow lives
-in [`windows/`](windows/).
-
-**Journey:** choose a troubleshooting question → start a real capture →
-reproduce the symptom → mark the relevant moment → stop → understand the
-measured evidence → try a change and compare → optionally save a support
-report.
-
-## Screenshots
+- **Finds why a connection failed:** whether the name lookup, the connection
+  or the secure setup broke, and what to try next.
+- **Shows its evidence:** every finding links to the exact packets and a
+  filter you can paste into Wireshark.
+- **Flags risky destinations:** checks traffic against public threat feeds,
+  offline, without sending anything about your traffic anywhere.
+- **Works with existing captures:** import a `.pcap` file from Wireshark or
+  tcpdump instead of capturing live.
 
 ![Results page for a capture where a destination never answered](docs/screenshots/results-wont-connect.png)
-*The Results page for the bundled `unanswered-connection.pcap` sample: Step 3
-of the connection path is where it broke, with the SYN packets as evidence.*
+*Results for the `unanswered-connection.pcap` sample: the connection broke at
+step 3, and the unanswered packets are listed as evidence.*
 
-![Security card above the goal verdict](docs/screenshots/security-card.png)
-*A high-severity threat-feed match adds a security card above the (unchanged)
+![Security card above the troubleshooting verdict](docs/screenshots/security-card.png)
+*A threat-feed match appears as a separate security card, above the
 troubleshooting answer.*
 
-![Threat feeds settings](docs/screenshots/threat-feeds.png)
-*Feeds are local files with visible freshness, counts, and licenses.*
+## Quick start (2 minutes, no admin rights)
 
-![Before/after comparison](docs/screenshots/compare.png)
-*Before/after comparison with denominators and comparability warnings.*
+1. Download the zip for your system from
+   [Releases](../../releases) and unzip it.
+   - **Mac:** open the app once, then go to **System Settings → Privacy &
+     Security**, click **Open Anyway**, and open it again.
+   - **Windows:** if SmartScreen warns, click **More info → Run anyway**.
+2. Click **Import log file** and choose `samples/unanswered-connection.pcap`.
+   The Results page shows the verdict, the step that failed and the evidence
+   packets.
+3. Import `samples/name-not-found.pcap` to see a failed name lookup.
+4. **Threat demo (macOS):** open **Threat feeds → Add a custom feed**, set
+   Format to *One indicator per line* and Type to *Domain*, choose
+   `samples/threat-demo-feed.txt`, then import `samples/threat-demo.pcap`.
 
-## Features
+## Capture your own traffic
+
+1. On the Capture page, pick what you're troubleshooting and the network
+   interface (Wi-Fi is usually `en0` on a Mac).
+2. Press **Start capture** and approve the administrator prompt.
+3. Reproduce the problem, and press **It happened just now** when it occurs.
+4. Press **Stop & analyze** to open the Results page.
+
+From there, **Compare** checks before and after a change, **Ask capture**
+answers questions about the capture, and **Share with support** creates a
+report with privacy controls.
+
+## Features in detail
 
 1. **Guided captures** — four goals (a website or app won't connect, a slow
    connection, an interrupted call or stream, background activity), an
@@ -91,15 +104,6 @@ troubleshooting answer.*
 All analysis, session storage, and optional inference stay on the Mac.
 There is no telemetry, external reputation lookup, reverse-DNS lookup, or
 cloud inference.
-
-**Try it in two minutes, no admin rights needed:** the `samples/` folder
-(included in both release ZIPs) has three small captures recorded against
-reserved test addresses — `unanswered-connection.pcap` (a destination that
-never replies), `name-not-found.pcap` (a name that does not exist), and
-`threat-demo.pcap` plus `threat-demo-feed.txt`. Import one on the Capture
-page and PacketScope walks you to its Results page. For the threat demo,
-first add the feed file under Threat feeds → Add a custom feed (Type:
-Domain, Format: one indicator per line), then import `threat-demo.pcap`.
 
 ## Download
 
