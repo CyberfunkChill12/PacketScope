@@ -16,7 +16,7 @@ public static partial class PacketAnalyzer
 {
     public const int DisplayLimit = 2000;
     public const long MaxFileBytes = 100 * 1024 * 1024;
-    private static readonly HashSet<int> SupportedLinks = new() { 0, 1, 12, 101, 108, 228, 229 };
+    private static readonly HashSet<int> SupportedLinks = new() { 0, 1, 12, 101, 108, 149, 258, 228, 229 };
 
     public static CaptureReport Analyze(string path)
     {
@@ -264,8 +264,61 @@ public static partial class PacketAnalyzer
                 case 12: case 101: DecodeIp(frame, d); break;
                 case 228: DecodeIPv4(frame, d); break;
                 case 229: DecodeIPv6(frame, d); break;
+                case 149: case 258: DecodePktap(frame, d); break;
                 default: d.Undecodable = true; d.Proto = $"Link {link}"; break;
             }
+        }
+
+
+        // Apple PKTAP metadata (captures recorded on macOS). v1 and v2
+        // headers are bounds-checked; process identity comes only from the
+        // metadata actually present, never inferred.
+        private void DecodePktap(byte[] frame, Decoded d)
+        {
+            d.Proto = "PKTAP";
+            if (frame.Length < 8) { d.Undecodable = true; d.Summary = "Truncated PKTAP metadata."; return; }
+            int RU32(int o) => Little ? frame[o] | frame[o + 1] << 8 | frame[o + 2] << 16 | frame[o + 3] << 24 : frame[o] << 24 | frame[o + 1] << 16 | frame[o + 2] << 8 | frame[o + 3];
+            int RU16(int o) => Little ? frame[o] | frame[o + 1] << 8 : frame[o] << 8 | frame[o + 1];
+            string CStr(int start, int maxLen)
+            {
+                if (start >= frame.Length) return "";
+                int end = start;
+                while (end < Math.Min(frame.Length, start + maxLen) && frame[end] != 0) end++;
+                return System.Text.Encoding.UTF8.GetString(frame, start, end - start);
+            }
+            bool looksV2 = frame.Length >= 40 && (RU32(36) & 0x00080000) != 0 && frame[0] >= 40 && frame[0] <= 200;
+            if (looksV2)
+            {
+                int innerDlt = RU16(6);
+                int flags = RU32(36);
+                int pid = RU32(28);
+                int commOff = frame[4], ecommOff = frame[5];
+                int headerLen = frame[0];
+                string name = commOff > 0 ? CStr(commOff, 20) : "";
+                if (name.Length == 0 && ecommOff > 0) name = CStr(ecommOff, 20);
+                if (commOff > 0) headerLen = Math.Max(headerLen, commOff + 20);
+                if (ecommOff > 0) headerLen = Math.Max(headerLen, ecommOff + 20);
+                int ifOff = frame[3];
+                if (ifOff > 0) headerLen = Math.Max(headerLen, ifOff + 24);
+                headerLen = Math.Min(Math.Max(headerLen, 40), frame.Length);
+                if (name.Length > 0) d.ProcessName = name;
+                if (pid != 0) d.ProcessId = pid;
+                if (innerDlt is 0 or 1 or 12 or 101 or 108 or 228 or 229)
+                    DecodeLink(frame.AsSpan(headerLen).ToArray(), innerDlt, d);
+                else { d.Undecodable = true; d.Summary = $"PKTAP record with unsupported inner link type {innerDlt}."; }
+                return;
+            }
+            int v1Len = RU32(0);
+            if (v1Len < 100 || v1Len > frame.Length) { d.Undecodable = true; d.Summary = "Malformed PKTAP metadata (bad header length)."; return; }
+            int dlt = RU32(8);
+            int pidv1 = RU32(52);
+            string namev1 = CStr(56, 20);
+            if (namev1.Length == 0) namev1 = CStr(88, 20);
+            if (namev1.Length > 0) d.ProcessName = namev1;
+            if (pidv1 != 0) d.ProcessId = pidv1;
+            if (dlt is 0 or 1 or 12 or 101 or 108 or 228 or 229)
+                DecodeLink(frame.AsSpan(v1Len).ToArray(), dlt, d);
+            else { d.Undecodable = true; d.Summary = $"PKTAP record with unsupported inner link type {dlt}."; }
         }
 
         private void DecodeEthernet(byte[] frame, Decoded d)

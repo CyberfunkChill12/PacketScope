@@ -642,7 +642,7 @@ public enum CaptureResultsBuilder {
             let shortText = r.tooShort ? " But the capture ran for only \(ResultFormat.duration(r.durationSec))" : ""
             let body = "All measured checks passed: \(dnsText)\(connText). Nothing was refused, reset or left unanswered.\(shortText)\(skippedText), so the failing attempt was most likely not recorded."
             return ResultSummary(headline: "No connection failure was seen, but this capture probably missed it", body: body,
-                                 nextStep: "Capture for 60 seconds while you reproduce the problem. Start the capture, open the website or app that won't connect, and press Mark the moment when it fails.",
+                                 nextStep: "Capture for 60 seconds while you reproduce the problem. Start the capture, open the website or app that won't connect, and press It happened just now when it fails.",
                                  citations: [ResultSummary.Citation(text: dnsText, anchor: "#dns")])
         default: // no_problem_seen
             let dest = r.destinations.first(where: { $0.outcome == "connected" })

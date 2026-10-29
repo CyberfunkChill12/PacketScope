@@ -110,6 +110,7 @@ public static class Normalize
             if (a == 10 || a == 127 || a == 0) return true;
             if (a == 172 && b is >= 16 and <= 31) return true;
             if (a == 192 && b == 168) return true;
+            if (a == 192 && b == 0 && ((v >> 8) & 0xFF) == 0) return true; // 192.0.0.0/24 only
             if (a == 169 && b == 254) return true;
             if (a >= 224) return true;
             if (a == 100 && b is >= 64 and <= 127) return true;

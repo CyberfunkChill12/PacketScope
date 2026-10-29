@@ -246,7 +246,7 @@ public enum Normalize {
             if a == 169 && b == 254 { return true }                       // link-local
             if a >= 224 { return true }                                   // multicast + reserved
             if a == 100 && (64...127).contains(b) { return true }         // CGNAT shared space
-            if a == 192 && b == 0 { return true }
+            if a == 192 && b == 0 && (v4 >> 8) & 0xFF == 0 { return true } // 192.0.0.0/24 only
             if a == 198 && (b == 18 || b == 19) { return true }           // benchmarking
             return false
         }
@@ -348,6 +348,25 @@ public enum PublicSuffix {
             return fallback.contains(domain) || !domain.contains(".")
         }
         return loader.publicSuffix(of: domain) == domain
+    }
+}
+
+
+/// One shared parser for indicator dates. abuse.ch feeds use
+/// "yyyy-MM-dd" and "yyyy-MM-dd HH:mm:ss"; ISO8601DateFormatter alone
+/// rejects both, which silently disabled the 30-day downgrade and the
+/// retention filters. Used by the matcher, the store, and the updater.
+public enum FeedDates {
+    public static func parse(_ raw: String) -> Date? {
+        if let d = ISO8601DateFormatter().date(from: raw) { return d }
+        for format in ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd"] {
+            let df = DateFormatter()
+            df.dateFormat = format
+            df.timeZone = TimeZone(identifier: "UTC")
+            df.locale = Locale(identifier: "en_US_POSIX")
+            if let d = df.date(from: raw) { return d }
+        }
+        return nil
     }
 }
 
@@ -669,9 +688,8 @@ public final class IndicatorStore {
     public func load(indicators: [Indicator], retentionSec: Int?, now: Date) {
         exact = [:]; ipPorts = [:]; ipPortByIP = [:]; cidrs = []; allIndicators = []
         let cutoff = retentionSec.map { now.addingTimeInterval(-Double($0)) }
-        let iso = ISO8601DateFormatter()
         for ind in indicators {
-            if let cutoff = cutoff, let ls = ind.lastSeen, let d = iso.date(from: ls), d < cutoff { continue }
+            if let cutoff = cutoff, let ls = ind.lastSeen, let d = FeedDates.parse(ls), d < cutoff { continue }
             allIndicators.append(ind)
             switch ind.type {
             case "cidr":
@@ -1024,17 +1042,10 @@ public final class FeedUpdater {
     public static func newestIndicatorDate(_ indicators: [Indicator]) -> String? {
         let fmts = ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd"]
         var best: (Date, String)?
+        _ = fmts
         for ind in indicators {
             for raw in [ind.lastSeen, ind.firstSeen].compactMap({ $0 }) {
-                for (i, f) in fmts.enumerated() {
-                    let df = DateFormatter(); df.dateFormat = f; df.timeZone = TimeZone(identifier: "UTC")
-                    _ = i
-                    if let d = df.date(from: raw) {
-                        if best == nil || d > best!.0 { best = (d, raw) }
-                        break
-                    }
-                }
-                if let d = ISO8601DateFormatter().date(from: raw), best == nil || d > best!.0 { best = (d, raw) }
+                if let d = FeedDates.parse(raw), best == nil || d > best!.0 { best = (d, raw) }
             }
         }
         return best?.1
@@ -1085,9 +1096,8 @@ public final class FeedUpdater {
             let kept: [Indicator]
             if let retention = meta.retentionSec {
                 let cutoff = now.addingTimeInterval(-Double(retention))
-                let iso = ISO8601DateFormatter()
                 kept = indicators.filter { ind in
-                    guard let ls = ind.lastSeen, let d = iso.date(from: ls) else { return true }
+                    guard let ls = ind.lastSeen, let d = FeedDates.parse(ls) else { return true }
                     return d >= cutoff
                 }
             } else { kept = indicators }

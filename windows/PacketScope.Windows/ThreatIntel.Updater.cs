@@ -97,6 +97,12 @@ public static class FeedSecrets
 
 // ---------------- Updater ----------------
 
+public static class FeedJson
+{
+    // Feed models use fields; System.Text.Json skips fields unless told otherwise.
+    public static readonly JsonSerializerOptions Options = new() { IncludeFields = true };
+}
+
 public sealed class FeedUpdater
 {
     public string DirectoryPath { get; }
@@ -141,13 +147,13 @@ public sealed class FeedUpdater
         try
         {
             if (File.Exists(StateFile))
-                _states = JsonSerializer.Deserialize<Dictionary<string, FeedState>>(File.ReadAllText(StateFile)) ?? new();
+                _states = JsonSerializer.Deserialize<Dictionary<string, FeedState>>(File.ReadAllText(StateFile), FeedJson.Options) ?? new();
         }
         catch { _states = new(); }
     }
     private void SaveStates()
     {
-        try { File.WriteAllText(StateFile, JsonSerializer.Serialize(_states)); } catch { /* state is advisory */ }
+        try { File.WriteAllText(StateFile, JsonSerializer.Serialize(_states, FeedJson.Options)); } catch { /* state is advisory */ }
     }
     public byte[]? StoredData(FeedMeta meta) => File.Exists(FeedFile(meta.Id)) ? File.ReadAllBytes(FeedFile(meta.Id)) : null;
 
@@ -273,7 +279,7 @@ public sealed class FeedUpdater
         try
         {
             var stored = new StoredIndex { FileSha256 = state.FileSha256, Indicators = indicators };
-            File.WriteAllText(IndexFile(meta.Id), JsonSerializer.Serialize(stored));
+            File.WriteAllText(IndexFile(meta.Id), JsonSerializer.Serialize(stored, FeedJson.Options));
         }
         catch { /* index is an optimization */ }
     }
@@ -282,7 +288,7 @@ public sealed class FeedUpdater
         try
         {
             if (!File.Exists(IndexFile(meta.Id))) return null;
-            return JsonSerializer.Deserialize<StoredIndex>(File.ReadAllText(IndexFile(meta.Id)))?.Indicators;
+            return JsonSerializer.Deserialize<StoredIndex>(File.ReadAllText(IndexFile(meta.Id)), FeedJson.Options)?.Indicators;
         }
         catch { return null; }
     }
@@ -379,7 +385,7 @@ public static class IntelSeverity
 
 public static class PopularDomains
 {
-    private static readonly HashSet<string> Top = new() { "google.com", "youtube.com", "facebook.com", "instagram.com", "x.com", "apple.com", "microsoft.com", "amazon.com", "netflix.com", "wikipedia.org", "cloudflare.com", "github.com", "linkedin.com", "office.com", "live.com", "bing.com", "yahoo.com", "whatsapp.com", "zoom.us", "adobe.com", "dropbox.com", "spotify.com", "reddit.com", "tiktok.com", "mozilla.org" };
+    private static readonly HashSet<string> Top = new() { "google.com", "youtube.com", "facebook.com", "instagram.com", "twitter.com", "x.com", "apple.com", "microsoft.com", "amazon.com", "netflix.com", "wikipedia.org", "cloudflare.com", "github.com", "linkedin.com", "office.com", "live.com", "bing.com", "yahoo.com", "whatsapp.com", "zoom.us", "adobe.com", "salesforce.com", "dropbox.com", "spotify.com", "reddit.com", "tiktok.com", "baidu.com", "wordpress.com", "mozilla.org", "akamai.com" };
     public static bool Contains(string domain)
     {
         var d = Normalize.Domain(domain);

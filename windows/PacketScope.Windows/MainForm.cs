@@ -1198,16 +1198,21 @@ public sealed class MainForm : Form
         {
             string allowPath = Path.Combine(_feedUpdater.DirectoryPath, "allowlist.json");
             if (File.Exists(allowPath))
-                _allowlist = JsonSerializer.Deserialize<List<AllowlistEntry>>(File.ReadAllText(allowPath)) ?? new();
+                _allowlist = JsonSerializer.Deserialize<List<AllowlistEntry>>(File.ReadAllText(allowPath), FeedJson.Options) ?? new();
             string customPath = Path.Combine(_feedUpdater.DirectoryPath, "custom-feeds.json");
             if (File.Exists(customPath))
-                _customFeeds = JsonSerializer.Deserialize<List<FeedMeta>>(File.ReadAllText(customPath)) ?? new();
+                _customFeeds = JsonSerializer.Deserialize<List<FeedMeta>>(File.ReadAllText(customPath), FeedJson.Options) ?? new();
         }
         catch { /* preferences are advisory */ }
     }
     private void SaveAllowlist()
     {
-        try { File.WriteAllText(Path.Combine(_feedUpdater.DirectoryPath, "allowlist.json"), JsonSerializer.Serialize(_allowlist)); } catch { }
+        try { File.WriteAllText(Path.Combine(_feedUpdater.DirectoryPath, "allowlist.json"), JsonSerializer.Serialize(_allowlist, FeedJson.Options)); } catch { }
+    }
+
+    private void SaveCustomFeeds()
+    {
+        try { File.WriteAllText(Path.Combine(_feedUpdater.DirectoryPath, "custom-feeds.json"), JsonSerializer.Serialize(_customFeeds, FeedJson.Options)); } catch { }
     }
 
     private void BuildFeedsPage()
@@ -1251,6 +1256,75 @@ public sealed class MainForm : Form
         allowLayout.Controls.Add(addRow);
         allowCard.Controls.Add(allowLayout);
         flow.Controls.Add(allowCard);
+        var customCard = Card();
+        var customLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, AutoSize = true, Width = 940 };
+        customLayout.Controls.Add(H("Add a custom feed", 14));
+        customLayout.Controls.Add(Body("Your own list, from a URL or a local file. You are responsible for its license."));
+        var nameRow = new FlowLayoutPanel { AutoSize = true };
+        var customNameBox = new TextBox { Width = 260, BackColor = Elevated, ForeColor = PrimaryText };
+        var customUrlBox = new TextBox { Width = 380, BackColor = Elevated, ForeColor = PrimaryText };
+        nameRow.Controls.AddRange(new Control[] { new Label { Text = "Name", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(0, 6, 6, 0) }, customNameBox, new Label { Text = "Feed URL", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(14, 6, 6, 0) }, customUrlBox });
+        customLayout.Controls.Add(nameRow);
+        var optRow = new FlowLayoutPanel { AutoSize = true };
+        var formatBox = new ComboBox { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
+        formatBox.Items.AddRange(new object[] { "One indicator per line", "Typed CSV (type,value,threat,severity)" });
+        formatBox.SelectedIndex = 0;
+        var typeBox = new ComboBox { Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
+        typeBox.Items.AddRange(new object[] { "Domain", "IPv4", "IPv6", "CIDR", "URL" });
+        typeBox.SelectedIndex = 0;
+        var severityBox = new ComboBox { Width = 160, DropDownStyle = ComboBoxStyle.DropDownList };
+        severityBox.Items.AddRange(new object[] { "High", "Medium", "Low", "Info" });
+        severityBox.SelectedIndex = 1;
+        optRow.Controls.AddRange(new Control[] { new Label { Text = "Format", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(0, 6, 6, 0) }, formatBox, new Label { Text = "Type", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(14, 6, 6, 0) }, typeBox, new Label { Text = "Severity", ForeColor = SecondaryText, AutoSize = true, Padding = new Padding(14, 6, 6, 0) }, severityBox });
+        customLayout.Controls.Add(optRow);
+        FeedMeta MakeCustomMeta(string url) => new()
+        {
+            Id = "custom-" + Guid.NewGuid().ToString("N")[..8],
+            Name = customNameBox.Text.Trim(),
+            Url = url,
+            License = "Custom feed (your responsibility)",
+            EnabledByDefault = true,
+            RefreshSec = 86400, MinRefreshSec = 300, MaxAgeSec = 259200,
+            BaseSeverity = (severityBox.SelectedItem?.ToString() ?? "Medium").ToLowerInvariant(),
+            Parser = formatBox.SelectedIndex == 1 ? "custom_csv" : "custom_lines",
+        };
+        var btnRow = new FlowLayoutPanel { AutoSize = true };
+        var addUrlBtn = StyledButton("Add URL feed", Teal, Color.Black);
+        addUrlBtn.Click += (_, _) =>
+        {
+            if (customNameBox.Text.Trim().Length == 0 || customUrlBox.Text.Trim().Length == 0) return;
+            var meta = MakeCustomMeta(customUrlBox.Text.Trim());
+            _customFeeds.Add(meta);
+            SaveCustomFeeds();
+            _ = _feedUpdater.UpdateAsync(meta, DateTimeOffset.Now, true);
+            _nav.SelectedItem = "Threat feeds";
+        };
+        var chooseFileBtn = StyledButton("Choose local file…", Elevated, PrimaryText);
+        chooseFileBtn.Click += (_, _) =>
+        {
+            if (customNameBox.Text.Trim().Length == 0)
+            {
+                MessageBox.Show("Give the feed a name first.", "PacketScope");
+                return;
+            }
+            using var dialog = new OpenFileDialog { Title = "Choose a custom feed file" };
+            if (dialog.ShowDialog() != DialogResult.OK) return;
+            var meta = MakeCustomMeta("file://custom");
+            _customFeeds.Add(meta);
+            SaveCustomFeeds();
+            try
+            {
+                var data = File.ReadAllBytes(dialog.FileName);
+                _feedUpdater.ImportLocalCopy(meta, data, formatBox.SelectedIndex == 0 ? (typeBox.SelectedItem?.ToString() ?? "Domain").ToLowerInvariant() : null);
+                MessageBox.Show($"Custom feed “{meta.Name}” imported.", "PacketScope");
+            }
+            catch (Exception ex) { MessageBox.Show($"Custom feed was not imported: {ex.Message}", "PacketScope"); }
+            _nav.SelectedItem = "Threat feeds";
+        };
+        btnRow.Controls.AddRange(new Control[] { addUrlBtn, chooseFileBtn });
+        customLayout.Controls.Add(btnRow);
+        customCard.Controls.Add(customLayout);
+        flow.Controls.Add(customCard);
         flow.Controls.Add(Body($"Feed content is untrusted data; indicator values are shown defanged and are never opened as links. Auth-Keys are stored in the Windows Credential Manager and never written to settings files or logs."));
         _content.Controls.Add(flow);
     }
@@ -1320,84 +1394,74 @@ public sealed class MainForm : Form
     private void ExportSupportReport()
     {
         if (_report == null || _context == null) return;
-        using var dialog = new SaveFileDialog { Title = "Save support report", FileName = "PacketScope-support-report.txt", Filter = "Text files (*.txt)|*.txt" };
-        if (dialog.ShowDialog() != DialogResult.OK) return;
-        try { File.WriteAllText(dialog.FileName, SupportReportText.Generate(_report, _context, _threatIntel)); }
-        catch (Exception ex) { MessageBox.Show($"Save failed: {ex.Message}", "PacketScope"); }
+        using var preview = new SupportPreviewDialog(_report, _context, _threatIntel);
+        preview.ShowDialog(this);
     }
 }
 
-public static class SupportReportText
+// Live plain-text preview with the four privacy switches, then Save.
+public sealed class SupportPreviewDialog : Form
 {
-    public static string Generate(CaptureReport report, SessionContext ctx, ThreatIntelSummary? intel)
+    private readonly CaptureReport _report;
+    private readonly SessionContext _ctx;
+    private readonly ThreatIntelSummary? _intel;
+    private readonly SupportOptions _options = new();
+    private readonly RichTextBox _preview = new();
+    private readonly CheckBox _ips = new() { Text = "IP addresses" };
+    private readonly CheckBox _domains = new() { Text = "Domain names" };
+    private readonly CheckBox _apps = new() { Text = "App / process names", Checked = true };
+    private readonly CheckBox _notes = new() { Text = "Your notes & symptoms" };
+
+    public SupportPreviewDialog(CaptureReport report, SessionContext ctx, ThreatIntelSummary? intel)
     {
-        var lines = new List<string>
+        _report = report; _ctx = ctx; _intel = intel;
+        Text = "Share with support";
+        Size = new Size(860, 660);
+        MinimumSize = new Size(720, 540);
+        BackColor = Color.FromArgb(9, 13, 22);
+        ForeColor = Color.FromArgb(237, 245, 252);
+        Font = new Font("Segoe UI", 9.5f);
+        var top = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, Padding = new Padding(14) };
+        top.Controls.Add(new Label { Text = "Share with support", Font = new Font("Segoe UI", 15, FontStyle.Bold), AutoSize = true, Width = 820 });
+        top.Controls.Add(new Label { Text = "Plain-text preview generated from structured facts. No raw payloads and no PCAP are included. This is selective redaction, not guaranteed anonymization — review the preview, especially any free-text notes you opt in.", ForeColor = Color.FromArgb(155, 176, 199), AutoSize = true, MaximumSize = new Size(820, 0) });
+        foreach (var box in new[] { _ips, _domains, _apps, _notes })
         {
-            "PacketScope support report (Windows)",
-            "====================================",
-            "This report was generated on this device from measured capture evidence. It contains no packet payloads and no PCAP data.",
-            "",
-            $"Capture: {report.PacketCount} packets, {report.CapturedBytes} captured bytes, observed span {report.Duration:0.0} s",
-            $"Goal: {GoalInfo.Title(ctx.Goal)}",
-            $"Interface: {(string.IsNullOrEmpty(ctx.Interface) ? "unknown" : ctx.Interface)}",
+            box.AutoSize = true;
+            box.Padding = new Padding(0, 4, 18, 0);
+            box.CheckedChanged += (_, _) => RefreshPreview();
+            top.Controls.Add(box);
+        }
+        top.Controls.Add(new Label { Text = "Identifiers are redacted across the whole report according to these controls, even inside notes you include. Turning notes on does not turn addresses or domains on.", ForeColor = Color.FromArgb(255, 189, 97), AutoSize = true, MaximumSize = new Size(820, 0) });
+        _preview.Dock = DockStyle.Fill;
+        _preview.ReadOnly = true;
+        _preview.BackColor = Color.FromArgb(19, 26, 37);
+        _preview.ForeColor = Color.FromArgb(237, 245, 252);
+        _preview.Font = new Font("Consolas", 9.5f);
+        _preview.BorderStyle = BorderStyle.FixedSingle;
+        var bottom = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Padding = new Padding(14), FlowDirection = FlowDirection.LeftToRight };
+        var save = new Button { Text = "Save support report…", BackColor = Color.FromArgb(71, 224, 196), ForeColor = Color.Black, FlatStyle = FlatStyle.Flat, Font = new Font("Segoe UI", 10, FontStyle.Bold), AutoSize = true, Height = 40 };
+        save.Click += (_, _) =>
+        {
+            using var dialog = new SaveFileDialog { Title = "Save support report", FileName = "PacketScope-support-report.txt", Filter = "Text files (*.txt)|*.txt" };
+            if (dialog.ShowDialog(this) != DialogResult.OK) return;
+            try { File.WriteAllText(dialog.FileName, _preview.Text); Close(); }
+            catch (Exception ex) { MessageBox.Show($"Save failed: {ex.Message}", "PacketScope"); }
         };
-        if (ctx.Markers.Count > 0)
-        {
-            lines.Add("Marked moments:");
-            foreach (var m in ctx.Markers) lines.Add($"  - {DateTimeOffset.FromUnixTimeMilliseconds((long)(m.Timestamp * 1000))}: {m.Note}");
-        }
-        lines.Add("");
-        lines.Add("Observations and next steps:");
-        if (report.Findings.Count == 0) lines.Add("  No matching checks fired. This does not prove the network is healthy.");
-        foreach (var f in report.Findings)
-        {
-            lines.Add($"  - {f.Title}");
-            lines.Add($"    Observed: {f.Evidence}");
-            lines.Add($"    Check next: {f.Recommendation}");
-            lines.Add($"    Supporting packets: {string.Join(", ", f.PacketNumbers.Select(n => $"#{n}"))}");
-        }
-        if (report.Facts is { } facts)
-        {
-            lines.Add("");
-            lines.Add("Measured facts:");
-            lines.Add($"  Visible DNS replies: {facts.DnsResponses}; DNS error replies: {facts.DnsErrors}");
-            lines.Add($"  Decoded TCP packets: {facts.TcpPackets}; with RST: {facts.TcpResets}");
-            lines.Add($"  Apps (approximate, endpoint-matched): {string.Join(", ", facts.Applications.Take(20).Select(a => a.Name))}");
-        }
-        if (intel != null)
-        {
-            lines.Add("");
-            lines.Add("Threat feed matching (checked locally on this device):");
-            switch (intel.Status)
-            {
-                case "no_feeds": lines.Add("  Threat matching didn't run: no feed copies had been downloaded."); break;
-                case "disabled": lines.Add("  Threat matching is turned off."); break;
-                case "loading": lines.Add("  Threat matching didn't run: feeds were still loading."); break;
-                default:
-                    if (intel.Matches.Count == 0) lines.Add($"  No matches in {intel.Feeds.Count} threat feeds. Feeds only list known threats, so this doesn't rule out new ones.");
-                    foreach (var group in ThreatIntelSummary.GroupByDestination(intel.Matches))
-                    {
-                        lines.Add($"  - {group.DisplayName}: severity {group.Severity}");
-                        foreach (var m in group.Matches)
-                            lines.Add($"    {(string.IsNullOrEmpty(m.FeedName) ? m.Indicator.FeedId : m.FeedName)}: {m.MatchedOn} {Normalize.Defanged(m.Observed, m.MatchedOn)} (threat: {m.Indicator.Threat ?? "listed"}{(m.Indicator.LastSeen != null ? $", last seen {m.Indicator.LastSeen}" : "")})");
-                    }
-                    foreach (var id in intel.Matches.Select(m => m.Indicator.FeedId).Concat(intel.Feeds.Select(f => f.Id)).Distinct().OrderBy(x => x))
-                    {
-                        if (FeedRegistry.Meta(id) is { } meta)
-                            lines.Add($"  Feed: {meta.Name} — license {meta.License}.{(meta.Attribution != null ? " " + meta.Attribution : "")}");
-                    }
-                    if (intel.IgnoredByAllowlist > 0) lines.Add($"  Ignored by your allowlist: {intel.IgnoredByAllowlist}");
-                    break;
-            }
-        }
-        lines.Add("");
-        lines.Add("Limitations:");
-        lines.Add("  - Encrypted traffic cannot be read; only metadata and visible plaintext headers are used.");
-        lines.Add("  - An observed DNS name does not establish a website visit or a destination's owner. No reverse-DNS or external lookups were performed.");
-        lines.Add("  - Captured volume is not a speed test and is not connection capacity.");
-        lines.Add("  - On Windows, process names come from connection-table snapshots matched by endpoint and are approximate.");
-        foreach (var n in report.LimitationNotes) lines.Add($"  - {n}");
-        lines.Add("  - This report uses default privacy options (IP addresses, domain names, and notes off; app names on). Review before sharing.");
-        return string.Join("\n", lines);
+        var done = new Button { Text = "Done", FlatStyle = FlatStyle.Flat, AutoSize = true, Height = 40 };
+        done.Click += (_, _) => Close();
+        bottom.Controls.AddRange(new Control[] { save, done });
+        Controls.Add(_preview);
+        Controls.Add(bottom);
+        Controls.Add(top);
+        RefreshPreview();
+    }
+
+    private void RefreshPreview()
+    {
+        _options.IncludeIPs = _ips.Checked;
+        _options.IncludeDomains = _domains.Checked;
+        _options.IncludeApps = _apps.Checked;
+        _options.IncludeNotes = _notes.Checked;
+        _preview.Text = SupportReportText.Generate(_report, _ctx, _intel, _options);
     }
 }

@@ -277,7 +277,7 @@ func registerThreatIntelTests() {
         let rep = analyze(pkts)
         let outcome = IntelMatcher.match(report: rep, store: testFeedStore(), metas: testMetas(), allowlist: [], now: Date())
         let m = outcome.matches.first { $0.matchedOn == "domain" }
-        T.expectEqual(m?.severity, "medium")
+        T.expectEqual(m?.severity, "medium", "severity should drop one level")
         T.expectEqual(m?.direction, "dns_only")
         T.expect(m?.severityReasons.contains("downgraded: contact attempted, not completed") ?? false)
     }
@@ -448,6 +448,32 @@ func registerThreatIntelTests() {
         T.expect(text.contains("203[.]0[.]113[.]50"), "indicator must be defanged in exports")
         T.expect(!text.contains("203.0.113.50:443") || text.contains("[.]"), "raw indicator form should not be the displayed form")
         T.expect(text.contains("Threat feed matching"))
+    }
+    T.test("feodo last_online in abuse.ch format still triggers the 30-day downgrade") {
+        // A connected destination whose only indicator is a Feodo-style row
+        // last seen "2026-03-12" (not ISO8601) must drop one level, as on Windows.
+        let ind = Indicator(feedId: "feodo_recommended", type: "ipv4", value: "203.0.113.50", threat: "botnet_c2", malwareFamily: "QakBot", severity: "high", firstSeen: "2026-03-01 10:00:00", lastSeen: "2026-03-12")
+        let store = IndicatorStore()
+        store.load(indicators: [ind], retentionSec: nil, now: Date())
+        let meta = FeedMeta(id: "feodo_recommended", name: "Feodo Tracker", url: "https://feodotracker.abuse.ch/downloads/ipblocklist_recommended.json", homepage: "", license: "CC0", requiresKey: false, enabledByDefault: true, refreshSec: 3600, minRefreshSec: 300, maxAgeSec: 86400, baseSeverity: "high", parser: "feodo_json")
+        var pkts: [(Double, [UInt8])] = [
+            (0, synSeg(client, "203.0.113.50", 51000, 443).1),
+            (0.01, synAckSeg("203.0.113.50", client, 443, 51000).1),
+        ]
+        let rep = analyze(pkts)
+        let now = Date(timeIntervalSince1970: 1793500000) // long after 2026-03-12
+        let outcome = IntelMatcher.match(report: rep, store: store, metas: ["feodo_recommended": meta], allowlist: [], now: now)
+        let m = outcome.matches.first { $0.matchedOn == "ipv4" }
+        T.expectEqual(m?.severity, "medium", "severity should drop one level")
+        T.expect(m?.severityReasons.contains("downgraded: indicator last seen over 30 days ago") ?? false)
+        // The shared parser accepts all three feed date formats.
+        T.expect(FeedDates.parse("2026-03-12") != nil, "date-only format parses")
+        T.expect(FeedDates.parse("2026-10-27 15:35:42") != nil, "datetime format parses")
+        T.expect(FeedDates.parse("2026-10-27T15:35:42Z") != nil, "ISO8601 format parses")
+    }
+    T.test("192.0.0.0/24 is never-flagged, 192.0.78.9 is not") {
+        T.expect(Normalize.isNeverFlaggedIP("192.0.0.9"))
+        T.expect(!Normalize.isNeverFlaggedIP("192.0.78.9"))
     }
     T.test("matcher: allowlisted indicator is counted as ignored, not matched") {
         let pkts: [(Double, [UInt8])] = [

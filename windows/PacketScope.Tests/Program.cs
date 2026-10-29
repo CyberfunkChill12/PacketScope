@@ -177,6 +177,13 @@ ipv4,10.0.0.5,botnet_c2,high
 }
 
 
+// Shared sample location for parity tests.
+var samplesDirPath = new Lazy<string>(() =>
+{
+    string candidate = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "samples"));
+    return Directory.Exists(candidate) ? candidate : Path.GetFullPath("samples");
+});
+
 // 7. AI summary (Windows): settings guard, validator, and service fallback
 {
     var settings = new AiSettings { Enabled = true, Endpoint = "https://models.example.com", Model = "x" };
@@ -260,6 +267,75 @@ ipv4,10.0.0.5,botnet_c2,high
         Eq(TsharkCount(pcapPath, dnsCheck.Filter), 1, "tshark matches the shown unanswered-DNS count");
         Directory.Delete(dir, true);
     }
+}
+
+
+// 9. Custom feed form flow: import samples/threat-demo-feed.txt as Domain /
+// one-per-line, then the threat-demo sample must flag example.com (as on Mac).
+{
+    string samplesDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "samples"));
+    if (!Directory.Exists(samplesDir)) samplesDir = Path.GetFullPath("samples");
+    var dir = Path.Combine(Path.GetTempPath(), "ps-win-custom-" + Guid.NewGuid().ToString("N"));
+    var updater = new FeedUpdater(dir, new InMemoryKeyStore());
+    var meta = new FeedMeta { Id = "custom-demo", Name = "Threat demo feed", Url = "file://custom", License = "Demo", EnabledByDefault = true, RefreshSec = 86400, MinRefreshSec = 300, MaxAgeSec = 259200, BaseSeverity = "high", Parser = "custom_lines" };
+    updater.ImportLocalCopy(meta, File.ReadAllBytes(Path.Combine(samplesDir, "threat-demo-feed.txt")), "domain");
+    var (store, perFeedDbg) = updater.LoadStore(DateTimeOffset.Now, new List<FeedMeta> { meta });
+    var directParse = FeedParser.Parse(meta, File.ReadAllBytes(Path.Combine(samplesDir, "threat-demo-feed.txt")), "domain");
+    Eq(store.Count, 1, "custom demo feed stores one indicator");
+    var rep = PacketAnalyzer.Analyze(Path.Combine(samplesDir, "threat-demo.pcap"));
+    var outcome = IntelMatcher.Match(rep, store, new Dictionary<string, FeedMeta> { [meta.Id] = meta }, new List<AllowlistEntry>(), DateTimeOffset.Now);
+    Check(outcome.Matches.Any(m => m.MatchedOn == "domain" && m.Observed == "example.com"), "threat demo flags example.com");
+    var intel = ThreatIntelSummary.Make(outcome, new List<FeedRef>(), "checked");
+    var results = CaptureResultsBuilder.Build(rep, new SessionContext { Goal = CaptureGoal.Website, Interface = "Ethernet0" }, 0, intel);
+    Eq(results.SecurityAlert, "high", "threat demo security alert high");
+    Check(results.Findings.Any(f => f.Category == "security" && f.Title.Contains("example.com")), "security finding names example.com");
+}
+
+// 10. Support report preview options + redaction (as on Mac)
+{
+    var rep = PacketAnalyzer.Analyze(Path.Combine(samplesDirPath.Value, "threat-demo.pcap"));
+    var ctx = new SessionContext { Interface = "Ethernet0", Symptom = "cannot reach example.com from 192.168.1.23" };
+    string defaultText = SupportReportText.Generate(rep, ctx, null);
+    Check(!defaultText.Contains("example.com"), "domains off by default in support report");
+    Check(!defaultText.Contains("cannot reach"), "notes off by default in support report");
+    var withNotes = SupportReportText.Generate(rep, ctx, null, new SupportOptions { IncludeNotes = true });
+    Check(withNotes.Contains("cannot reach"), "notes appear when opted in");
+    Check(!withNotes.Contains("192.168.1.23") && withNotes.Contains("[address hidden]"), "IPs inside opted-in notes are still redacted");
+    Check(!withNotes.Contains("example.com") && withNotes.Contains("[domain hidden]"), "domains inside opted-in notes are still redacted");
+}
+
+// 11. Never-flagged scope + abuse.ch date downgrade (parity with Mac)
+{
+    Check(Normalize.IsNeverFlaggedIp("192.0.0.9"), "192.0.0.9 is never-flagged (/24)");
+    Check(!Normalize.IsNeverFlaggedIp("192.0.78.9"), "192.0.78.9 is not never-flagged");
+    var ind = new Indicator { FeedId = "feodo_recommended", Type = "ipv4", Value = "203.0.113.50", Threat = "botnet_c2", Severity = "high", LastSeen = "2026-03-12" };
+    var store = new IndicatorStore();
+    store.Load(new List<Indicator> { ind }, null, DateTimeOffset.Now);
+    var meta = new FeedMeta { Id = "feodo_recommended", Name = "Feodo Tracker", License = "CC0", BaseSeverity = "high", Parser = "feodo_json" };
+    var pkts = new List<(double, byte[])>
+    {
+        (1000, Tcp("192.168.1.23", "203.0.113.50", 51000, 443, 0x02)),
+        (1000.01, Tcp("203.0.113.50", "192.168.1.23", 443, 51000, 0x12)),
+    };
+    var rep = PacketAnalyzer.Analyze(Pcap(101, pkts));
+    var outcome = IntelMatcher.Match(rep, store, new Dictionary<string, FeedMeta> { [meta.Id] = meta }, new List<AllowlistEntry>(), DateTimeOffset.FromUnixTimeSeconds(1793500000));
+    Eq(outcome.Matches.FirstOrDefault(m => m.MatchedOn == "ipv4")?.Severity, "medium", "windows feodo-format date downgrades one level");
+}
+
+// 12. Sample parity with the Mac app (verdicts and check counts)
+{
+    string dir = samplesDirPath.Value;
+    var unanswered = PacketAnalyzer.Analyze(Path.Combine(dir, "unanswered-connection.pcap"));
+    var ur = CaptureResultsBuilder.Build(unanswered, new SessionContext { Goal = CaptureGoal.Website, Interface = "en0" }, 0);
+    Eq(ur.Verdict, "cause_found", "sample unanswered verdict");
+    Eq(unanswered.Facts!.Checks.First(c => c.Id == "tcp-unanswered").Count, 8, "sample unanswered count");
+    var nx = PacketAnalyzer.Analyze(Path.Combine(dir, "name-not-found.pcap"));
+    var nr = CaptureResultsBuilder.Build(nx, new SessionContext { Goal = CaptureGoal.Website, Interface = "en0" }, 0);
+    Eq(nr.Verdict, "cause_found", "sample name-not-found verdict");
+    Eq(nx.Facts!.Checks.First(c => c.Id == "dns-errors").Count, 1, "sample dns error count");
+    var threat = PacketAnalyzer.Analyze(Path.Combine(dir, "threat-demo.pcap"));
+    var tr = CaptureResultsBuilder.Build(threat, new SessionContext { Goal = CaptureGoal.Website, Interface = "en0" }, 0);
+    Eq(tr.Verdict, "inconclusive", "sample threat demo verdict without the custom feed");
 }
 
 Console.WriteLine("---");

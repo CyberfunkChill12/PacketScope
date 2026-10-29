@@ -104,7 +104,7 @@ public enum IntelMatcher {
                 sev = IntelSeverity.adjust(sev, by: -1)
                 reasons.append("downgraded: contact attempted, not completed")
             }
-            if let ls = ind.lastSeen, let date = ISO8601DateFormatter().date(from: ls), now.timeIntervalSince(date) > 30 * 86400 {
+            if let ls = ind.lastSeen, let date = FeedDates.parse(ls), now.timeIntervalSince(date) > 30 * 86400 {
                 sev = IntelSeverity.adjust(sev, by: -1)
                 reasons.append("downgraded: indicator last seen over 30 days ago")
             }

@@ -338,7 +338,7 @@ public static class CaptureResultsBuilder
                 {
                     Headline = "No connection failure was seen, but this capture probably missed it",
                     Body = $"All measured checks passed: {dnsText}{connText}. Nothing was refused, reset or left unanswered.{shortText}{skippedText}, so the failing attempt was most likely not recorded.",
-                    NextStep = "Capture for 60 seconds while you reproduce the problem. Start the capture, open the website or app that won't connect, and press Mark the moment when it fails.",
+                    NextStep = "Capture for 60 seconds while you reproduce the problem. Start the capture, open the website or app that won't connect, and press It happened just now when it fails.",
                 };
             }
             default:

@@ -86,12 +86,15 @@ above** — no Npcap, no administrator rights, no internet.
   are allowed, so summaries never leave this device; there is no cloud
   model. Configure it under Ask capture → “Results summary wording”.
   Ask answers themselves always come from the local rules guide.
-- QUIC server names are not yet extracted (QUIC is reported as “names not
-  read, contents encrypted” in coverage); TCP TLS SNI/JA3/JA4 and
+- QUIC server names are not yet extracted, and the app says so the same
+  way the results page does (“QUIC … (contents encrypted)” in coverage);
+  TCP TLS SNI/JA3/JA4 and
   certificate extraction match the Mac behavior, including multi-segment
   ClientHello reassembly and ECH outer-name handling.
 - Process attribution is endpoint-matched and approximate (above), rather
   than kernel PKTAP metadata.
+- The DNS card shows answered/average/slowest but no p95 (the macOS card
+  shows the 95th percentile as well).
 - The public-suffix guard uses a conservative built-in list on Windows;
   the macOS app bundles the full Public Suffix List.
 - File-hash matching reports “Files: not checked” (this app doesn't

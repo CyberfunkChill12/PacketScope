@@ -798,7 +798,7 @@ struct TimelineSectionView: View {
                 }
             }
             if results.markedMomentsSec.isEmpty {
-                Text("Press Mark the moment during your next capture and the summary will focus on what happened around it.").font(.system(size: 11)).foregroundColor(PS.secondary)
+                Text("Press It happened just now during your next capture and the summary will focus on what happened around it.").font(.system(size: 11)).foregroundColor(PS.secondary)
             }
         }
     }
