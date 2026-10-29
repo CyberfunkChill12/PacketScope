@@ -3,7 +3,8 @@
 **When a website won't load, a call freezes, or something is quietly talking
 in the background, the honest answer is usually inside the traffic — but the
 tools that can read it (Wireshark, tcpdump) assume you already speak packets.**
-PacketScope is for everyday Mac users who need an answer they can act on, and
+
+PacketScope is for everyday users who need an answer they can act on, and
 for the administrators they escalate to. You pick the problem in plain words,
 capture while it happens, mark the moment it bites, and get back a verdict you
 can verify: what was observed, what it most likely means, exactly which packets
