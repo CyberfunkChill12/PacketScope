@@ -37,6 +37,24 @@ troubleshooting answer.*
    Format to *One indicator per line* and Type to *Domain*, choose
    `samples/threat-demo-feed.txt`, then import `samples/threat-demo.pcap`.
 
+## Try it in your browser (no install)
+
+**Live web demo: https://cyberfunkchill12.github.io/PacketScope/**
+
+The web demo (source in [`docs/`](docs/)) runs the same analysis in your
+browser, entirely on your device: play back a real recorded "won't connect"
+capture with "It happened just now" markers, open the bundled samples, or
+import any classic PCAP file (drag-and-drop works) and explore Results,
+Timeline, Apps, Compare, Ask capture, Packet log, Endpoints, Threat feeds
+(local matching, custom feeds, allowlist), evidence-packet export, and the
+privacy-controlled support report. Browsers can't capture live traffic, so
+live capture needs the Mac or Windows app below. To run it locally:
+
+```sh
+cd docs && python3 -m http.server 8765
+# open http://127.0.0.1:8765/
+```
+
 ## Capture your own traffic
 
 1. On the Capture page, pick what you're troubleshooting and the network

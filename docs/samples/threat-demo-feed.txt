@@ -1,0 +1,2 @@
+# Custom demo feed. In Threat feeds settings, choose Add a custom feed > Choose local file, pick this file, set Type to Domain and Format to "One indicator per line", then import a capture (threat-demo.pcap) again to see example.com flagged.
+example.com

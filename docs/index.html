@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PacketScope — web demo</title>
+<meta name="description" content="PacketScope in the browser: import a packet capture and get a plain-language verdict with evidence. Everything runs locally in your browser.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="brand-icon">≋</div>
+      <div>
+        <div class="brand-name">PacketScope</div>
+        <div class="brand-sub">NETWORK OBSERVATORY · WEB DEMO</div>
+      </div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-note">
+      <strong>Browser edition.</strong> Browsers can't capture live traffic,
+      so this demo plays back a real recorded capture and analyzes any PCAP
+      file you import — entirely on this device. For live capture, use the
+      <a href="https://github.com/CyberfunkChill12/PacketScope/releases" target="_blank" rel="noopener">Mac or Windows app</a>.
+    </div>
+    <div id="stateLabel">Ready</div>
+  </aside>
+  <main id="content"></main>
+</div>
+<input type="file" id="filePicker" accept=".pcap,.cap,.log,application/octet-stream" hidden>
+<script src="analyzer.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
