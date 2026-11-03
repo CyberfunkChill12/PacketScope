@@ -1,9 +1,31 @@
 # PacketScope
 
+> [!CAUTION]
+> ## ⚠️ JUDGES — PLEASE READ THIS FIRST ⚠️
+>
+> ### 🚫 The macOS and Windows apps CANNOT be downloaded yet.
+>
+> Native macOS and Windows versions of PacketScope exist in this
+> repository, but they have **not been signed with a developer
+> certificate** (the Mac build is not notarized; the Windows build is
+> not Authenticode-signed), so macOS and Windows will block them for
+> most users. **Please do not try to download or install the desktop
+> apps for this hackathon.**
+>
+> ### 👉 [▶ CLICK HERE TO OPEN PACKETSCOPE IN YOUR BROWSER](https://cyberfunkchill12.github.io/PacketScope/)
+>
+> **That public link is the only way to view and use PacketScope right
+> now.** No download, no installation, no signing workaround — just open
+> it, play the demo capture, try the samples, or import your own PCAP
+> file.
+
 **PacketScope records your network traffic while a problem happens, then
 tells you in plain language what went wrong, and shows the packets that
-prove it.** Everything runs on your own computer. It's available for macOS,
-with a Windows version in [`windows/`](windows/).
+prove it.** Everything runs on your own computer. Native macOS and
+Windows versions exist in this repository (see below), but they are not
+available to download yet — for now, PacketScope is viewed through the
+[browser version](https://cyberfunkchill12.github.io/PacketScope/) linked
+above.
 
 - **Finds why a connection failed:** whether the name lookup, the connection
   or the secure setup broke, and what to try next.
@@ -23,6 +45,14 @@ step 3, and the unanswered packets are listed as evidence.*
 troubleshooting answer.*
 
 ## Quick start (2 minutes, no admin rights)
+
+> [!WARNING]
+> **The desktop zips below are not available to download yet** (unsigned
+> builds — see the notice at the top of this page). **Judges: use the
+> [browser version](https://cyberfunkchill12.github.io/PacketScope/)
+> instead** — open it and click a sample, e.g.
+> `unanswered-connection.pcap`. The desktop steps below are kept for
+> after the apps are signed.
 
 1. Download the zip for your system from
    [Releases](../../releases) and unzip it.
@@ -123,30 +153,37 @@ All analysis, session storage, and optional inference stay on the Mac.
 There is no telemetry, external reputation lookup, reverse-DNS lookup, or
 cloud inference.
 
-## Hackathon demo: please use the browser version
+## ⚠️ Desktop apps not downloadable yet — use the browser version
 
-Native macOS and Windows versions of PacketScope do exist (see
-**Features in detail** above, **Download**, **Building from source**, and
-**Requirements** below), but they have **not been signed with a paid
-developer certificate**: the macOS build is only ad hoc signed and is not
-notarized, and the Windows build is not Authenticode-signed. Because of
-that, macOS Gatekeeper and Windows SmartScreen will warn about — and on
-many machines block — the downloads, so the desktop apps will probably
-not open or run for most end users who download them.
-
-For that reason, **for the hackathon you can only reliably view and try
-PacketScope through the publicly open browser version**:
-
-**→ https://cyberfunkchill12.github.io/PacketScope/**
-
-No installation or signing workaround is needed: open the link, play back
-the recorded demo capture, try the bundled samples, or import your own
-classic PCAP file. The desktop downloads and build instructions below are
-kept for completeness and for anyone who wants to build from source;
-signing and notarizing the desktop apps is future work after the
-hackathon.
+> [!CAUTION]
+> **🚫 macOS app: not available to download yet. 🚫 Windows app: not
+> available to download yet.**
+>
+> Both native apps exist, but neither has been signed with a paid
+> developer certificate: the macOS build is only ad hoc signed and is
+> not notarized, and the Windows build is not Authenticode-signed.
+> macOS Gatekeeper and Windows SmartScreen will therefore warn about —
+> and on many machines block — the apps, so they will probably not open
+> or run for most end users.
+>
+> ### 👉 [▶ OPEN THE LIVE BROWSER VERSION INSTEAD](https://cyberfunkchill12.github.io/PacketScope/)
+>
+> **For the hackathon, PacketScope can only be viewed and used through
+> that publicly open link.** No installation or signing workaround is
+> needed: open it, play back the recorded demo capture, try the bundled
+> samples, or import your own classic PCAP file. The desktop downloads
+> and build instructions below are kept for completeness and for anyone
+> who wants to build from source; signing and notarizing the desktop
+> apps is future work after the hackathon.
 
 ## Download
+
+> [!WARNING]
+> **Not available yet:** the macOS and Windows downloads below are
+> unsigned and cannot be downloaded/installed for normal use yet.
+> Please use the
+> [browser version](https://cyberfunkchill12.github.io/PacketScope/)
+> instead.
 
 **macOS ( Apple Silicon and Intel ):** download `PacketScope-macOS.zip`
 from the macOS release, unzip it, and open
