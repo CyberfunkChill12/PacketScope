@@ -123,6 +123,29 @@ All analysis, session storage, and optional inference stay on the Mac.
 There is no telemetry, external reputation lookup, reverse-DNS lookup, or
 cloud inference.
 
+## Hackathon demo: please use the browser version
+
+Native macOS and Windows versions of PacketScope do exist (see
+**Features in detail** above, **Download**, **Building from source**, and
+**Requirements** below), but they have **not been signed with a paid
+developer certificate**: the macOS build is only ad hoc signed and is not
+notarized, and the Windows build is not Authenticode-signed. Because of
+that, macOS Gatekeeper and Windows SmartScreen will warn about — and on
+many machines block — the downloads, so the desktop apps will probably
+not open or run for most end users who download them.
+
+For that reason, **for the hackathon you can only reliably view and try
+PacketScope through the publicly open browser version**:
+
+**→ https://cyberfunkchill12.github.io/PacketScope/**
+
+No installation or signing workaround is needed: open the link, play back
+the recorded demo capture, try the bundled samples, or import your own
+classic PCAP file. The desktop downloads and build instructions below are
+kept for completeness and for anyone who wants to build from source;
+signing and notarizing the desktop apps is future work after the
+hackathon.
+
 ## Download
 
 **macOS ( Apple Silicon and Intel ):** download `PacketScope-macOS.zip`
