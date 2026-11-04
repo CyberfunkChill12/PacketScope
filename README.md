@@ -18,6 +18,11 @@
 > now.** No download, no installation, no signing workaround — just open
 > it, play the demo capture, try the samples, or import your own PCAP
 > file.
+>
+> ### 🎬 [WATCH THE DEMO VIDEO (5 min 46 s)](https://cyberfunkchill12.github.io/PacketScope/demo.mp4)
+>
+> A walkthrough of the full macOS app: Capture, Results, Timeline, Apps,
+> Compare, Ask capture, Packet log, Endpoints and Threat feeds.
 
 **PacketScope records your network traffic while a problem happens, then
 tells you in plain language what went wrong, and shows the packets that
@@ -35,6 +40,13 @@ above.
   offline, without sending anything about your traffic anywhere.
 - **Works with existing captures:** import a `.pcap` file from Wireshark or
   tcpdump instead of capturing live.
+
+## Demo video
+
+[![PacketScope demo video: click to play](docs/screenshots/demo-video.png)](https://cyberfunkchill12.github.io/PacketScope/demo.mp4)
+
+*Click the image to play the walkthrough of the macOS app (5 min 46 s). You can
+also [open the video file directly](docs/demo.mp4).*
 
 ![Results page for a capture where a destination never answered](docs/screenshots/results-wont-connect.png)
 *Results for the `unanswered-connection.pcap` sample: the connection broke at
